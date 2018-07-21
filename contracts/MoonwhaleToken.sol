@@ -1,9 +1,11 @@
 pragma solidity 0.4.24;
 import "openzeppelin-solidity/contracts/access/Whitelist.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/StandardToken.sol";
 import "openzeppelin-solidity/contracts/lifecycle/Pausable.sol";
+import "openzeppelin-solidity/contracts/ownership/CanReclaimToken.sol";
 
 
-contract MoonwhaleToken is StandardToken, Whitelist {
+contract MoonwhaleToken is StandardToken, Whitelist, Pausable, CanReclaimToken {
   string public constant name = "Moonwhale";
   string public constant symbol = "XMM";
   uint8 public constant decimals = 18;
