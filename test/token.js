@@ -64,7 +64,7 @@ contract('Token', async function(accounts) {
       numOfTokensMinted.should.be.bignumber.equal(tokensMintedPerDay.mul(2));
     });
   });
-  describe('check num of tokens minted', async ()  => {
+  describe('mint tokens to gameficationWallet', async ()  => {
     let token;
     let tokensMintedPerDay;
     let gameficationWallet = accounts[1];
@@ -125,6 +125,13 @@ contract('Token', async function(accounts) {
       await token.mintToGameficationWallet({ from: accounts[2] })
       .should.be.rejectedWith(EVMRevert);
     })
-
+    it('mint should increase the totalSupply', async () => {
+      let totalSupply = await token.totalSupply();
+      let currentTime = latestTime();
+      await increaseTimeTo(currentTime + duration.days(1));
+      await token.mintToGameficationWallet();
+      (await token.totalSupply())
+      .should.be.bignumber.equal(totalSupply.add(tokensMintedPerDay))
+    })
   })
 });
