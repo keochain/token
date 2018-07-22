@@ -34,8 +34,9 @@ contract MoonwhaleToken is StandardToken, Whitelist, Pausable, CanReclaimToken {
   }
 
   function numTokensMinted() public constant returns(uint256){
+
     uint256 diff = now - creationTime;
-    uint totalMinted = diff.mul(TOKENS_MINTED_PER_DAY).div(1 days);
+    uint totalMinted = diff.div(1 days).mul(TOKENS_MINTED_PER_DAY);
     return totalMinted;
   }
 
