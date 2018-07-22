@@ -2,6 +2,7 @@ const Token = artifacts.require('MoonwhaleToken');
 import BigNumber  from 'bignumber.js';
 import latestTime from './helpers/latestTime.js'
 import ether from './helpers/ether.js';
+import EVMRevert from './helpers/EVMRevert.js';
 import {increaseTimeTo, duration} from './helpers/increaseTime'
 require('chai')
   .use(require('chai-as-promised'))
@@ -54,13 +55,76 @@ contract('Token', async function(accounts) {
       await increaseTimeTo(currentTime + duration.days(2));
       const numOfTokensMinted = await token.numTokensMinted();
       numOfTokensMinted.should.be.bignumber.equal(tokensMintedPerDay.mul(2));
-    })
+    });
 
     it('should mint 60000 tokens after 2 days and 30 minutes', async () => {
       const currentTime = latestTime();
       await increaseTimeTo(currentTime + duration.days(2) + duration.minutes(30));
       const numOfTokensMinted = await token.numTokensMinted();
       numOfTokensMinted.should.be.bignumber.equal(tokensMintedPerDay.mul(2));
-    })
+    });
   });
+  describe('check num of tokens minted', async ()  => {
+    let token;
+    let tokensMintedPerDay;
+    let gameficationWallet = accounts[1];
+    beforeEach(async () => {
+      token = await Token.new(gameficationWallet);
+      tokensMintedPerDay = await token.TOKENS_MINTED_PER_DAY()
+    });
+
+    it('should mint 30000 tokens to gameficationWallet', async () => {
+      const currentTime = latestTime();
+      await increaseTimeTo(currentTime + duration.days(1));
+      const numOfTokensMinted = await token.numTokensMinted();
+      await token.mintToGameficationWallet();
+      let balance = await token.balanceOf(gameficationWallet);
+      balance.should.be.bignumber.equal(numOfTokensMinted);
+      let tokensWithdrawn =  await token.tokensWithdrawn();
+      tokensWithdrawn.should.be.bignumber.equal(balance);
+    })
+
+
+    it('should mint 60000 tokens to gameficationWallet', async () => {
+      let currentTime = latestTime();
+      await increaseTimeTo(currentTime + duration.days(1));
+      let numOfTokensMinted = await token.numTokensMinted();
+      await token.mintToGameficationWallet();
+      currentTime = latestTime();
+      await increaseTimeTo(currentTime + duration.days(1) );
+      await token.mintToGameficationWallet();
+      let balance = await token.balanceOf(gameficationWallet);
+      balance.should.be.bignumber.equal(tokensMintedPerDay.mul(2));
+    });
+
+    it('minting more than once on the same day should not send any tokens', async () => {
+      let currentTime = latestTime();
+      await increaseTimeTo(currentTime + duration.days(1));
+      let numOfTokensMinted = await token.numTokensMinted();
+      await token.mintToGameficationWallet();
+      let balance = await token.balanceOf(gameficationWallet);
+      balance.should.be.bignumber.equal(tokensMintedPerDay);
+
+      await token.mintToGameficationWallet();
+      balance = await token.balanceOf(gameficationWallet);
+      balance.should.be.bignumber.equal(tokensMintedPerDay);
+
+      await token.mintToGameficationWallet();
+      balance = await token.balanceOf(gameficationWallet);
+      balance.should.be.bignumber.equal(tokensMintedPerDay);
+    });
+
+    it('should not mint any tokens if token is less than a day old', async () => {
+      let numOfTokensMinted = await token.numTokensMinted();
+      await token.mintToGameficationWallet();
+      let balance = await token.balanceOf(gameficationWallet);
+      assert(balance.toNumber() === 0);
+    });
+
+    it('mint function can be called only by a whitelist', async () => {
+      await token.mintToGameficationWallet({ from: accounts[2] })
+      .should.be.rejectedWith(EVMRevert);
+    })
+
+  })
 });
