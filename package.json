@@ -8,7 +8,8 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "testrpc": "ganache-cli"
+    "testrpc": "ganache-cli",
+    "build-contracts": "sol-merger './contracts/*.sol' ./build"
   },
   "author": "",
   "license": "ISC",
@@ -25,6 +26,7 @@
     "chai": "^4.1.2",
     "chai-as-promised": "^7.1.1",
     "chai-bignumber": "^2.0.0",
-    "ganache-cli": "^6.1.6"
+    "ganache-cli": "^6.1.6",
+    "sol-merger": "^0.1.2"
   }
 }

@@ -154,5 +154,12 @@ contract('Token', async function(accounts) {
       (await token.totalSupply()).should.be.bignumber.equal(totalSupply.sub(1));
     });
 
+    it('burn should reduce the balance', async () => {
+      await token.addAddressToWhitelist(accounts[2]);
+      let balance = await token.balanceOf(accounts[2]);
+      await token.burn(1, {from: accounts[2]});
+      (await token.balanceOf(accounts[2])).should.be.bignumber.equal(balance.sub(1));
+    });
+
   })
 });
