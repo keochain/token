@@ -3,24 +3,25 @@ import "openzeppelin-solidity/contracts/access/Whitelist.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/StandardToken.sol";
 import "openzeppelin-solidity/contracts/lifecycle/Pausable.sol";
 import "openzeppelin-solidity/contracts/ownership/CanReclaimToken.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/BurnableToken.sol";
 
 
-contract MoonwhaleToken is StandardToken, Whitelist, Pausable, CanReclaimToken {
-  string public constant name = "Moonwhale";
+contract MoonwhaleToken is StandardToken, BurnableToken, Whitelist, Pausable, CanReclaimToken {
+  string public constant name = "Moons";
   string public constant symbol = "XMM";
   uint8 public constant decimals = 18;
   uint256 public constant INITIAL_SUPPLY = 1000000000 * (10 ** uint256(decimals));
 
   uint256 public constant TOKENS_MINTED_PER_DAY = 30000 * (10 ** uint256(decimals));
-  uint256 public tokensWithdrawn = 0;
+  uint256 public gamificationTokensWithdrawn = 0;
   uint256 public creationTime;
-  address public gameficationWallet;
+  address public gamificationWallet;
   event Mint(address indexed to, uint256 amount);
 
-  constructor(address _gameficationWallet) public {
-    require(_gameficationWallet != address(0));
+  constructor(address _gamificationWallet) public {
+    require(_gamificationWallet != address(0));
     creationTime = now;
-    gameficationWallet = _gameficationWallet;
+    gamificationWallet = _gamificationWallet;
     totalSupply_ = INITIAL_SUPPLY;
     balances[msg.sender] = INITIAL_SUPPLY;
     emit Transfer(address(0), msg.sender, INITIAL_SUPPLY);
@@ -40,19 +41,19 @@ contract MoonwhaleToken is StandardToken, Whitelist, Pausable, CanReclaimToken {
     return totalMinted;
   }
 
-  function mintToGameficationWallet() public whenNotPaused onlyIfWhitelisted(msg.sender) {
+  function mintToGamificationWallet() public whenNotPaused onlyIfWhitelisted(msg.sender) {
     uint totalMinted = numTokensMinted();
-    uint tokensToSend = totalMinted.sub(tokensWithdrawn);
+    uint tokensToSend = totalMinted.sub(gamificationTokensWithdrawn);
     if(tokensToSend > 0) {
-      mint(gameficationWallet, tokensToSend);
-      tokensWithdrawn = tokensWithdrawn.add(tokensToSend);
+      mint(gamificationWallet, tokensToSend);
+      gamificationTokensWithdrawn = gamificationTokensWithdrawn.add(tokensToSend);
     }
   }
 
 
   function changeGamificationWallet(address _newWallet) public whenNotPaused onlyIfWhitelisted(msg.sender) {
     require(_newWallet != address(0));
-    gameficationWallet = _newWallet;
+    gamificationWallet = _newWallet;
   }
 
   function transferFrom(address _from, address _to, uint256 _value) public whenNotPaused returns (bool) {
@@ -76,4 +77,7 @@ contract MoonwhaleToken is StandardToken, Whitelist, Pausable, CanReclaimToken {
     return super.transfer(_to, _value);
   }
 
+  function burn(uint _value) public whenNotPaused onlyIfWhitelisted(msg.sender) {
+    super.burn(_value);
+  }
 }
