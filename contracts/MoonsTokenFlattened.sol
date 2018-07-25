@@ -1,5 +1,5 @@
 /*
-Copyright 2017 Moonwhale
+Copyright 2018 Moonwhale
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -758,49 +758,63 @@ contract MoonsToken is StandardToken, BurnableToken, Whitelist, Pausable, CanRec
   uint8 public constant decimals = 18;
   uint256 public constant INITIAL_SUPPLY = 1000000000 * (10 ** uint256(decimals));
 
-  uint256 public constant TOKENS_MINTED_PER_DAY = 30000 * (10 ** uint256(decimals));
-  uint256 public gamificationTokensWithdrawn = 0;
+  uint256 public constant GAMIFICATION_TOKEN_ALLOCATION_PER_DAY = 30000 * (10 ** uint256(decimals));
+  uint256 public totalMinted = 0;
   uint256 public creationTime;
   address public gamificationWallet;
 
   event Mint(address indexed to, uint256 amount);
 
   ///@param	_gamificationWallet The wallet address used for the gamification feature.
+  ///@dev Set "creationTime" as a constant during deployment and remove this comment.
   constructor(address _gamificationWallet) public {
     require(_gamificationWallet != address(0));
+    require(_gamificationWallet != msg.sender);
+
     creationTime = now;
+
     gamificationWallet = _gamificationWallet;
     totalSupply_ = INITIAL_SUPPLY;
     balances[msg.sender] = INITIAL_SUPPLY;
+
     emit Transfer(address(0), msg.sender, INITIAL_SUPPLY);
+
     super.addAddressToWhitelist(msg.sender);
+    super.addAddressToWhitelist(_gamificationWallet);
   }
 
+  ///@notice Mints the specified amount of tokens.
+  ///@param _to The address which will receive the minted tokens.
+  ///@param _amount The amount of tokens to be minted.
   function mint(address _to, uint256 _amount) internal {
     totalSupply_ = totalSupply_.add(_amount);
     balances[_to] = balances[_to].add(_amount);
+
     emit Mint(_to, _amount);
   }
 
   ///@return The total number of tokens that should have been minted by the gamification engine.
-  function getMintingSupply() public constant returns(uint256){
+  function getMintingSupply() public constant returns(uint256) {
     uint256 diff = now - creationTime;
-    uint supply = diff.div(1 days).mul(TOKENS_MINTED_PER_DAY);
+    uint256 supply = diff.div(1 days).mul(GAMIFICATION_TOKEN_ALLOCATION_PER_DAY);
     return supply;
   }
 
-  ///@notice Mint tokens for gamification engine.
+  ///@notice Mints tokens for gamification engine.
   ///Every day, 30 000 new Moons are minted for gamification purposes, currently equalling
   ///3 Million Stars. They are distributed to active users as rewards in the gamification
   ///engine. Any remaining Stars at the end of a month will be kept available for the next
-  ///month. The minting of new tokens amounts to an inflation of around 1% per annum.
+  ///month. The minting of new tokens amounts to an inflation of around 1.095% per annum
+  ///based on the initial supply of 1 billion tokens.
   function mint() public whenNotPaused onlyIfWhitelisted(msg.sender) {
-    uint mintingSupply = getMintingSupply();
-    uint remainingTokens = mintingSupply.sub(gamificationTokensWithdrawn);
+    require(now > creationTime);
 
-    if(remainingTokens > 0) {
-      mint(gamificationWallet, remainingTokens);
-      gamificationTokensWithdrawn = gamificationTokensWithdrawn.add(remainingTokens);
+    uint256 mintingSupply = getMintingSupply();
+    uint256 tokensToMint = mintingSupply.sub(totalMinted);
+
+    if(tokensToMint > 0) {
+      mint(gamificationWallet, tokensToMint);
+      totalMinted = totalMinted.add(tokensToMint);
     }
   }
 
@@ -842,7 +856,12 @@ contract MoonsToken is StandardToken, BurnableToken, Whitelist, Pausable, CanRec
 
   ///@notice Burns the coins held by the sender if they are in the whitelist.
   ///@dev This function is overriden to leverage Pausable feature.
-  function burn(uint _value) public whenNotPaused onlyIfWhitelisted(msg.sender) {
+  function burn(uint256 _value) public whenNotPaused onlyIfWhitelisted(msg.sender) {
     super.burn(_value);
+  }
+
+  ///@notice Disallows incoming transactions to this contract address.
+  function() external {
+    revert("This action is not supported.");
   }
 }
