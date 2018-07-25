@@ -8,14 +8,14 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "testrpc": "ganache-cli",
-    "build-contracts": "sol-merger './contracts/*.sol' ./build"
+    "testrpc": "ganache-cli"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "bignumber.js": "7.2.1",
-    "openzeppelin-solidity": "1.11.0"
+    "openzeppelin-solidity": "1.11.0",
+    "solidity-flattener": "git+https://github.com/poanetwork/solidity-flattener.git"
   },
   "devDependencies": {
     "babel-polyfill": "^6.23.0",
@@ -26,7 +26,6 @@
     "chai": "^4.1.2",
     "chai-as-promised": "^7.1.1",
     "chai-bignumber": "^2.0.0",
-    "ganache-cli": "^6.1.6",
-    "sol-merger": "^0.1.2"
+    "ganache-cli": "^6.1.6"
   }
 }

@@ -1,4 +1,4 @@
-const Token = artifacts.require('MoonwhaleToken');
+const Token = artifacts.require('MoonsToken');
 import BigNumber  from 'bignumber.js';
 import latestTime from './helpers/latestTime.js'
 import ether from './helpers/ether.js';
@@ -46,21 +46,21 @@ contract('Token', async function(accounts) {
     it('should mint 30000 tokens after day 1', async () => {
       const currentTime = latestTime();
       await increaseTimeTo(currentTime + duration.days(1));
-      const numOfTokensMinted = await token.numTokensMinted();
+      const numOfTokensMinted = await token.getMintingSupply();
       numOfTokensMinted.should.be.bignumber.equal(tokensMintedPerDay);
     })
 
     it('should mint 60000 tokens after day 2', async () => {
       const currentTime = latestTime();
       await increaseTimeTo(currentTime + duration.days(2));
-      const numOfTokensMinted = await token.numTokensMinted();
+      const numOfTokensMinted = await token.getMintingSupply();
       numOfTokensMinted.should.be.bignumber.equal(tokensMintedPerDay.mul(2));
     });
 
     it('should mint 60000 tokens after 2 days and 30 minutes', async () => {
       const currentTime = latestTime();
       await increaseTimeTo(currentTime + duration.days(2) + duration.minutes(30));
-      const numOfTokensMinted = await token.numTokensMinted();
+      const numOfTokensMinted = await token.getMintingSupply();
       numOfTokensMinted.should.be.bignumber.equal(tokensMintedPerDay.mul(2));
     });
   });
@@ -77,8 +77,8 @@ contract('Token', async function(accounts) {
     it('should mint 30000 tokens to gamificationWallet', async () => {
       const currentTime = latestTime();
       await increaseTimeTo(currentTime + duration.days(1));
-      const numOfTokensMinted = await token.numTokensMinted();
-      await token.mintToGamificationWallet();
+      const numOfTokensMinted = await token.getMintingSupply();
+      await token.mint();
       let balance = await token.balanceOf(gamificationWallet);
       balance.should.be.bignumber.equal(numOfTokensMinted);
       let gamificationTokensWithdrawn =  await token.gamificationTokensWithdrawn();
@@ -89,11 +89,11 @@ contract('Token', async function(accounts) {
     it('should mint 60000 tokens to gamificationWallet', async () => {
       let currentTime = latestTime();
       await increaseTimeTo(currentTime + duration.days(1));
-      let numOfTokensMinted = await token.numTokensMinted();
-      await token.mintToGamificationWallet();
+      let numOfTokensMinted = await token.getMintingSupply();
+      await token.mint();
       currentTime = latestTime();
       await increaseTimeTo(currentTime + duration.days(1) );
-      await token.mintToGamificationWallet();
+      await token.mint();
       let balance = await token.balanceOf(gamificationWallet);
       balance.should.be.bignumber.equal(tokensMintedPerDay.mul(2));
     });
@@ -101,36 +101,36 @@ contract('Token', async function(accounts) {
     it('minting more than once on the same day should not send any tokens', async () => {
       let currentTime = latestTime();
       await increaseTimeTo(currentTime + duration.days(1));
-      let numOfTokensMinted = await token.numTokensMinted();
-      await token.mintToGamificationWallet();
+      let numOfTokensMinted = await token.getMintingSupply();
+      await token.mint();
       let balance = await token.balanceOf(gamificationWallet);
       balance.should.be.bignumber.equal(tokensMintedPerDay);
 
-      await token.mintToGamificationWallet();
+      await token.mint();
       balance = await token.balanceOf(gamificationWallet);
       balance.should.be.bignumber.equal(tokensMintedPerDay);
 
-      await token.mintToGamificationWallet();
+      await token.mint();
       balance = await token.balanceOf(gamificationWallet);
       balance.should.be.bignumber.equal(tokensMintedPerDay);
     });
 
     it('should not mint any tokens if token is less than a day old', async () => {
-      let numOfTokensMinted = await token.numTokensMinted();
-      await token.mintToGamificationWallet();
+      let numOfTokensMinted = await token.getMintingSupply();
+      await token.mint();
       let balance = await token.balanceOf(gamificationWallet);
       assert(balance.toNumber() === 0);
     });
 
     it('mint function can be called only by a whitelist', async () => {
-      await token.mintToGamificationWallet({ from: accounts[2] })
+      await token.mint({ from: accounts[2] })
       .should.be.rejectedWith(EVMRevert);
     })
     it('mint should increase the totalSupply', async () => {
       let totalSupply = await token.totalSupply();
       let currentTime = latestTime();
       await increaseTimeTo(currentTime + duration.days(1));
-      await token.mintToGamificationWallet();
+      await token.mint();
       (await token.totalSupply())
       .should.be.bignumber.equal(totalSupply.add(tokensMintedPerDay))
     })

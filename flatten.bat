@@ -1,0 +1,1 @@
+SolidityFlattener "contracts/MoonsToken.sol" "contracts/MoonsTokenFlattened.sol" "../node_modules"
