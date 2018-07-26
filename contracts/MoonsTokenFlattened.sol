@@ -773,14 +773,15 @@ contract MoonsToken is StandardToken, BurnableToken, Whitelist, Pausable, CanRec
 
     creationTime = now;
 
+    super.addAddressToWhitelist(msg.sender);
+    super.addAddressToWhitelist(_gamificationWallet);
+
     gamificationWallet = _gamificationWallet;
+
     totalSupply_ = INITIAL_SUPPLY;
     balances[msg.sender] = INITIAL_SUPPLY;
 
     emit Transfer(address(0), msg.sender, INITIAL_SUPPLY);
-
-    super.addAddressToWhitelist(msg.sender);
-    super.addAddressToWhitelist(_gamificationWallet);
   }
 
   ///@notice Mints the specified amount of tokens.
@@ -801,10 +802,9 @@ contract MoonsToken is StandardToken, BurnableToken, Whitelist, Pausable, CanRec
   }
 
   ///@notice Mints tokens for gamification engine.
-  ///Every day, 30 000 new Moons are minted for gamification purposes, currently equalling
-  ///3 Million Stars. They are distributed to active users as rewards in the gamification
-  ///engine. Any remaining Stars at the end of a month will be kept available for the next
-  ///month. The minting of new tokens amounts to an inflation of around 1.095% per annum
+  ///Every day, 30000 new Moons are minted for gamification purposes.
+  ///They are distributed to active users as rewards in the gamification
+  ///engine. The minting of new tokens amounts to an inflation of around 1.095% per annum
   ///based on the initial supply of 1 billion tokens.
   function mint() public whenNotPaused onlyIfWhitelisted(msg.sender) {
     require(now > creationTime);
@@ -854,9 +854,10 @@ contract MoonsToken is StandardToken, BurnableToken, Whitelist, Pausable, CanRec
     return super.transfer(_to, _value);
   }
 
-  ///@notice Burns the coins held by the sender if they are in the whitelist.
+  ///@notice Burns the coins held by the sender.
+  ///@param _value The amount of coins to burn.
   ///@dev This function is overriden to leverage Pausable feature.
-  function burn(uint256 _value) public whenNotPaused onlyIfWhitelisted(msg.sender) {
+  function burn(uint256 _value) public whenNotPaused {
     super.burn(_value);
   }
 
