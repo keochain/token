@@ -62,22 +62,12 @@ contract MoonsToken is Pausable, StandardToken, BurnableToken, CanReclaimToken {
   constructor(address _gamificationWallet) public {
     require(_gamificationWallet != address(0));
     require(_gamificationWallet != msg.sender);
-
     creationTime = now;
-
-    super.addAddressToWhitelist(msg.sender);
-    super.addAddressToWhitelist(_gamificationWallet);
-
     gamificationWallet = _gamificationWallet;
-
     totalSupply_ = INITIAL_SUPPLY;
     balances[msg.sender] = INITIAL_SUPPLY;
-
     emit Transfer(address(0), msg.sender, INITIAL_SUPPLY);
-<<<<<<< HEAD
     super.addAddressToWhitelist(_gamificationWallet);
-=======
->>>>>>> 97517849a789d28a65f346f849f79ae2b5c36d43
   }
 
   ///@notice Mints the specified amount of tokens.
