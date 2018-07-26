@@ -29,7 +29,7 @@ contract('Token', async function(accounts) {
       (await token.INITIAL_SUPPLY()).should.be.bignumber.equal(INITIAL_SUPPLY);
       const initialBalance = await token.balanceOf(owner);
       initialBalance.should.be.bignumber.equal(INITIAL_SUPPLY);
-      const isWhitelisted = await token.hasRole(owner, "whitelist");
+      const isWhitelisted = await token.whitelist(owner);
       assert(isWhitelisted);
       assert((await token.totalMinted()).toString() === '0');
       assert((await token.owner()) === owner);
@@ -146,33 +146,83 @@ contract('Token', async function(accounts) {
       await token.mint();
       (await token.totalSupply())
       .should.be.bignumber.equal(totalSupply.add(tokensMintedPerDay))
-    });    
+    });
   })
-  describe('Burn tokens', async () => {
 
+  describe('Pausable', async () => {
+    let token;
+    beforeEach(async () => {
+      token = await Token.new(accounts[4]);
+    })
+    it('onlyWhitelisted addresses can pause', async () => {
+      await token.pause().should.be.fulfilled;
+      await token.pause({ from: accounts[3] }).should.be.rejectedWith(EVMRevert);
+    });
+  })
+  describe('ERC20 functions when Paused', async () => {
+    let token;
+    beforeEach(async () => {
+      token = await Token.new(accounts[4]);
+      await token.transfer(accounts[1], 100)
+      await token.pause();
+    })
+
+    it('non whitelisted addresses cannot transfer when paused', async () => {
+      await token.transfer(accounts[3], 10);
+      await token.transfer(accounts[2], 5, { from: accounts[2] })
+      .should.be.rejectedWith(EVMRevert);
+    });
+
+    it('non whitelisted addresses cannot approve when paused', async () => {
+      await token.approve(accounts[2], 10, { from: accounts[1] })
+      .should.be.rejectedWith(EVMRevert);
+    })
+
+    it('non whitelisted addresses cannot transferFrom when paused', async () => {
+      await token.unpause();
+      await token.transfer(accounts[2], 100);
+      await token.approve(accounts[3], 10, {from: accounts[2]})
+      await token.pause();
+      await token.transferFrom(accounts[2], accounts[5], 1, {from: accounts[2] })
+      .should.be.rejectedWith(EVMRevert);
+    })
+
+    it('non whitelisted address cannot increase Approval when paused', async () => {
+      await token.unpause();
+      await token.transfer(accounts[2], 100);
+      await token.approve(accounts[3], 10, {from: accounts[2]})
+      await token.pause();
+      await token.increaseApproval(accounts[3], 10, {from: accounts[2]})
+      .should.be.rejectedWith(EVMRevert);
+    })
+
+    it('non whitelisted address cannot decrease Approval when paused', async () => {
+      await token.unpause();
+      await token.transfer(accounts[2], 100);
+      await token.approve(accounts[3], 10, {from: accounts[2]})
+      await token.pause();
+      await token.decreaseApproval(accounts[3], 5, {from: accounts[2]})
+      .should.be.rejectedWith(EVMRevert);
+    })
+  })
+
+  describe('Burn tokens', async () => {
     let token;
     beforeEach(async () => {
       token = await Token.new(accounts[1]);
       await token.transfer(accounts[2], 10);
     })
 
-    it('should revert if burn is called by non-whitelisted', async () => {
-      await token.burn(1, {from: accounts[2]}).should.be.rejectedWith(EVMRevert);
-    });
-
     it('burn should reduce the total supply', async () => {
-      await token.addAddressToWhitelist(accounts[2]);
       let totalSupply = await token.totalSupply();
       await token.burn(1, {from: accounts[2]});
       (await token.totalSupply()).should.be.bignumber.equal(totalSupply.sub(1));
     });
 
     it('burn should reduce the balance', async () => {
-      await token.addAddressToWhitelist(accounts[2]);
       let balance = await token.balanceOf(accounts[2]);
       await token.burn(1, {from: accounts[2]});
       (await token.balanceOf(accounts[2])).should.be.bignumber.equal(balance.sub(1));
     });
-
   })
 });

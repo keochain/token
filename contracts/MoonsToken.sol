@@ -15,15 +15,14 @@ limitations under the License.
  */
 
 pragma solidity 0.4.24;
-import "openzeppelin-solidity/contracts/access/Whitelist.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/StandardToken.sol";
-import "openzeppelin-solidity/contracts/lifecycle/Pausable.sol";
+import "./Pausable.sol";
 import "openzeppelin-solidity/contracts/ownership/CanReclaimToken.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/BurnableToken.sol";
 
 ///@title Moons Token
 ///@author http://moonwhale.io
-///@notice Moons is the utility token of the Moonwhale ecosystem. 
+///@notice Moons is the utility token of the Moonwhale ecosystem.
 ///Moons will be distributed through a public ICO. A small portion of
 ///Moons will be distributed for free for gamification purposes, rewarding a long-term investor
 ///mindset and engagement in the Moonwhale App.
@@ -32,7 +31,7 @@ import "openzeppelin-solidity/contracts/token/ERC20/BurnableToken.sol";
 ///term requires patience and endurance. It’s easy to fall into traps when there are pumps or dips.
 ///With gamification users can both be educated about the upsides of staying out of the game of
 ///quick returns and provided some of the same emotional thrills that trading gives.
-contract MoonsToken is StandardToken, BurnableToken, Whitelist, Pausable, CanReclaimToken {
+contract MoonsToken is Pausable, StandardToken, BurnableToken, CanReclaimToken {
   string public constant name = "Moons";
   string public constant symbol = "XMM";
   uint8 public constant decimals = 18;
@@ -42,6 +41,19 @@ contract MoonsToken is StandardToken, BurnableToken, Whitelist, Pausable, CanRec
   uint256 public totalMinted = 0;
   uint256 public creationTime;
   address public gamificationWallet;
+
+  modifier canTransfer(address _sender) {
+    if(paused) {
+      if(whitelist[_sender] == false) {
+        revert();
+      } else {
+        _;
+      }
+    }
+    else {
+      _;
+    }
+  }
 
   event Mint(address indexed to, uint256 amount);
 
@@ -58,8 +70,6 @@ contract MoonsToken is StandardToken, BurnableToken, Whitelist, Pausable, CanRec
     balances[msg.sender] = INITIAL_SUPPLY;
 
     emit Transfer(address(0), msg.sender, INITIAL_SUPPLY);
-
-    super.addAddressToWhitelist(msg.sender);
     super.addAddressToWhitelist(_gamificationWallet);
   }
 
@@ -86,7 +96,7 @@ contract MoonsToken is StandardToken, BurnableToken, Whitelist, Pausable, CanRec
   ///engine. Any remaining Stars at the end of a month will be kept available for the next
   ///month. The minting of new tokens amounts to an inflation of around 1.095% per annum
   ///based on the initial supply of 1 billion tokens.
-  function mint() public whenNotPaused onlyIfWhitelisted(msg.sender) {
+  function mint() public whenNotPaused onlyWhitelisted {
     require(now > creationTime);
 
     uint256 mintingSupply = getMintingSupply();
@@ -101,42 +111,41 @@ contract MoonsToken is StandardToken, BurnableToken, Whitelist, Pausable, CanRec
   ///@notice Changes the destination wallet address of the gamification engine to receive the minted coins.
   ///@param _newWallet The address of the new gamification wallet to set.
   ///@dev Can only be performed by the whitelist.
-  function changeGamificationWallet(address _newWallet) public whenNotPaused onlyIfWhitelisted(msg.sender) {
+  function changeGamificationWallet(address _newWallet) public whenNotPaused onlyWhitelisted {
     require(_newWallet != address(0));
     require(_newWallet != gamificationWallet);
-
     gamificationWallet = _newWallet;
   }
 
   ///@dev This function is overriden to leverage Pausable feature.
-  function transferFrom(address _from, address _to, uint256 _value) public whenNotPaused returns (bool) {
+  function transferFrom(address _from, address _to, uint256 _value) canTransfer(_from) public returns (bool) {
     return super.transferFrom(_from, _to, _value);
   }
 
   ///@dev This function is overriden to leverage Pausable feature.
-  function approve(address _spender, uint256 _value) public whenNotPaused returns (bool) {
+  function approve(address _spender, uint256 _value) public canTransfer(msg.sender) returns (bool) {
     return super.approve(_spender, _value);
   }
 
 
   ///@dev This function is overriden to leverage Pausable feature.
-  function increaseApproval(address _spender,uint256 _addedValue) public whenNotPaused returns(bool) {
+  function increaseApproval(address _spender,uint256 _addedValue) public canTransfer(msg.sender) returns(bool) {
     return super.increaseApproval(_spender, _addedValue);
   }
 
   ///@dev This function is overriden to leverage Pausable feature.
-  function decreaseApproval(address _spender, uint256 _subtractedValue) public whenNotPaused returns (bool) {
+  function decreaseApproval(address _spender, uint256 _subtractedValue) public canTransfer(msg.sender) whenNotPaused returns (bool) {
     return super.decreaseApproval(_spender, _subtractedValue);
   }
 
   ///@dev This function is overriden to leverage Pausable feature.
-  function transfer(address _to, uint256 _value) public whenNotPaused returns (bool) {
+  function transfer(address _to, uint256 _value) public canTransfer(msg.sender) returns (bool) {
     return super.transfer(_to, _value);
   }
 
   ///@notice Burns the coins held by the sender if they are in the whitelist.
   ///@dev This function is overriden to leverage Pausable feature.
-  function burn(uint256 _value) public whenNotPaused onlyIfWhitelisted(msg.sender) {
+  function burn(uint256 _value) public whenNotPaused {
     super.burn(_value);
   }
 
