@@ -17,7 +17,7 @@ limitations under the License.
 pragma solidity 0.4.24;
 
 
-contract Whitelist {
+contract CustomWhitelist {
   mapping(address => bool) public whitelist;
   uint public numberOfWhitelists;
   event WhitelistedAddressAdded(address addr);

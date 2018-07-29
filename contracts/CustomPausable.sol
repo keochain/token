@@ -1,14 +1,14 @@
 pragma solidity ^0.4.24;
 
 
-import "./Whitelist.sol";
+import "./CustomWhitelist.sol";
 
 
 /**
  * @title Pausable
  * @dev Base contract which allows children to implement an emergency stop mechanism.
  */
-contract Pausable is Whitelist {
+contract CustomPausable is CustomWhitelist {
   event Pause();
   event Unpause();
 

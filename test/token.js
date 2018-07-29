@@ -204,12 +204,22 @@ contract('Token', async function(accounts) {
       await token.decreaseApproval(accounts[3], 5, {from: accounts[2]})
       .should.be.rejectedWith(EVMRevert);
     })
+
+    it('only whitelisted address can transfer', async() => {
+      await token.unpause();
+      await token.addAddressToWhitelist(accounts[1]);
+      await token.pause();
+      await token.transfer(accounts[3], 2);
+      const balance = await token.balanceOf(accounts[3]);
+      assert(balance.toNumber() == 2);
+    });
   })
 
   describe('Burn tokens', async () => {
     let token;
     beforeEach(async () => {
       token = await Token.new(accounts[1]);
+      await token.addAddressToWhitelist(accounts[2]);
       await token.transfer(accounts[2], 10);
     })
 
@@ -224,5 +234,57 @@ contract('Token', async function(accounts) {
       await token.burn(1, {from: accounts[2]});
       (await token.balanceOf(accounts[2])).should.be.bignumber.equal(balance.sub(1));
     });
+
+    it('non whitelisted addresses cannot burn tokens', async () => {
+      await token.transfer(accounts[3], 10);
+      await token.burn(1, {from: accounts[3]})
+      .should.be.rejectedWith(EVMRevert);
+    })
+  })
+
+  describe('Bulk token transfer', async () => {
+    let token;
+    beforeEach(async () => {
+      token = await Token.new(accounts[5]);
+      await token.addAddressToWhitelist(accounts[2]);
+    })
+    it('should bulk transfer', async () => {
+      const balances = [];
+      const destinations = [];
+      for(let i=1;i<4;i++) {
+        destinations.push(accounts[i]);
+        balances.push(i);
+      }
+      let sum = await token.sumOf(balances);
+      await token.bulkTransfer(destinations, balances);
+      for(let i=0;i<destinations.length;i++) {
+        let balance = await token.balanceOf(destinations[i]);
+        assert(balance.toNumber() == balances[i]);
+      }
+    });
+
+    it('non-whitelisted addresses cannot call bulk transfer', async () => {
+      const balances = [];
+      const destinations = [];
+      for(let i=1;i<4;i++) {
+        destinations.push(accounts[i]);
+        balances.push(i);
+      }
+      await token.bulkTransfer(destinations, balances, { from: accounts[1] })
+      .should.be.rejectedWith(EVMRevert);
+    })
+    it('it should revert when the balance if less than the sum', async () => {
+      const balances = [];
+      const destinations = [];
+      for(let i=1;i<4;i++) {
+        destinations.push(accounts[i]);
+        balances.push(i);
+      }
+      let currentBalance = await token.balanceOf(accounts[0]);
+      await token.transfer(accounts[6], currentBalance);
+      await token.bulkTransfer(destinations, balances, { from: accounts[0] })
+      .should.be.rejectedWith(EVMRevert);
+    })
+
   })
 });

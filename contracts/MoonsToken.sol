@@ -16,7 +16,7 @@ limitations under the License.
 
 pragma solidity 0.4.24;
 import "openzeppelin-solidity/contracts/token/ERC20/StandardToken.sol";
-import "./Pausable.sol";
+import "./CustomPausable.sol";
 import "openzeppelin-solidity/contracts/ownership/CanReclaimToken.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/BurnableToken.sol";
 
@@ -31,7 +31,7 @@ import "openzeppelin-solidity/contracts/token/ERC20/BurnableToken.sol";
 ///term requires patience and endurance. It’s easy to fall into traps when there are pumps or dips.
 ///With gamification users can both be educated about the upsides of staying out of the game of
 ///quick returns and provided some of the same emotional thrills that trading gives.
-contract MoonsToken is Pausable, StandardToken, BurnableToken, CanReclaimToken {
+contract MoonsToken is CustomPausable, StandardToken, BurnableToken, CanReclaimToken {
   string public constant name = "Moons";
   string public constant symbol = "XMM";
   uint8 public constant decimals = 18;
@@ -139,10 +139,27 @@ contract MoonsToken is Pausable, StandardToken, BurnableToken, CanReclaimToken {
     return super.transfer(_to, _value);
   }
 
+  function sumOf(uint256[] values) public pure returns(uint256) {
+    uint256 total = 0;
+    for (uint256 i = 0; i < values.length; i++) {
+      total = total.add(values[i]);
+    }
+    return total;
+  }
+
+  function bulkTransfer(address[] destinations, uint256[] amounts) whenNotPaused onlyWhitelisted public {
+    uint256 requiredBalance = sumOf(amounts);
+    require(destinations.length == amounts.length);
+    require(balances[msg.sender] >= requiredBalance);
+    for (uint256 i = 0; i < destinations.length; i++) {
+     transfer(destinations[i], amounts[i]);
+   }
+ }
+
   ///@notice Burns the coins held by the sender.
   ///@param _value The amount of coins to burn.
   ///@dev This function is overriden to leverage Pausable feature.
-  function burn(uint256 _value) public whenNotPaused {
+  function burn(uint256 _value) public whenNotPaused onlyWhitelisted {
     super.burn(_value);
   }
 
