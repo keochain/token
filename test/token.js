@@ -255,7 +255,7 @@ contract('Token', async function(accounts) {
         destinations.push(accounts[i]);
         balances.push(i);
       }
-      let sum = await token.sumOf(balances);
+
       await token.bulkTransfer(destinations, balances);
       for(let i=0;i<destinations.length;i++) {
         let balance = await token.balanceOf(destinations[i]);
