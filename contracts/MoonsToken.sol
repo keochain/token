@@ -139,7 +139,7 @@ contract MoonsToken is CustomPausable, StandardToken, BurnableToken, CanReclaimT
     return super.transfer(_to, _value);
   }
 
-  function sumOf(uint256[] values) public pure returns(uint256) {
+  function sumOf(uint256[] values) private pure returns(uint256) {
     uint256 total = 0;
     for (uint256 i = 0; i < values.length; i++) {
       total = total.add(values[i]);
