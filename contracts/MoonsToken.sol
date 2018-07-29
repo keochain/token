@@ -42,18 +42,7 @@ contract MoonsToken is CustomPausable, StandardToken, BurnableToken, CanReclaimT
   uint256 public creationTime;
   address public gamificationWallet;
 
-  modifier canTransfer(address _sender) {
-    if(paused) {
-      if(whitelist[_sender] == false) {
-        revert();
-      } else {
-        _;
-      }
-    }
-    else {
-      _;
-    }
-  }
+
 
   event Mint(address indexed to, uint256 amount);
 
@@ -147,7 +136,7 @@ contract MoonsToken is CustomPausable, StandardToken, BurnableToken, CanReclaimT
     return total;
   }
 
-  function bulkTransfer(address[] destinations, uint256[] amounts) whenNotPaused onlyWhitelisted public {
+  function bulkTransfer(address[] destinations, uint256[] amounts) onlyWhitelisted public {
     uint256 requiredBalance = sumOf(amounts);
     require(destinations.length == amounts.length);
     require(balances[msg.sender] >= requiredBalance);
