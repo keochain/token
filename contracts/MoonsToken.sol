@@ -74,7 +74,7 @@ contract MoonsToken is CustomPausable, StandardToken, BurnableToken, NoOwner {
   }
 
   ///@return The total number of Moons (XMM) in existence. 
-  function getTotalSupply() public constant returns(uint256) {
+  function countTokensInExistence() public constant returns(uint256) {
     return INITIAL_SUPPLY.add(totalRewarded);
   }
 
@@ -106,10 +106,19 @@ contract MoonsToken is CustomPausable, StandardToken, BurnableToken, NoOwner {
 
   ///@notice Changes the destination wallet address of the gamification engine to receive the minted coins.
   ///@param _newWallet The address of the new gamification wallet to set.
+  ///@param _removeExistingFromWhitelist Removes the existing gamification wallet from the whitelist.
   ///@dev Can only be performed by the whitelist.
-  function changeGamificationWallet(address _newWallet) public whenNotPaused onlyWhitelisted {
+  function changeGamificationWallet(address _newWallet, bool _removeExistingFromWhitelist) public whenNotPaused onlyWhitelisted {
     require(_newWallet != address(0));
     require(_newWallet != gamificationWallet);
+    require(_newWallet != owner);
+
+    if(_removeExistingFromWhitelist){
+      removeAddressFromWhitelist(gamificationWallet);
+    }
+
+    addAddressToWhitelist(_newWallet);
+
     gamificationWallet = _newWallet;
   }
 
@@ -145,30 +154,30 @@ contract MoonsToken is CustomPausable, StandardToken, BurnableToken, NoOwner {
   }
 
   ///@notice Returns the sum of supplied values.
-  ///@param values The collection of values to create the sum from.
-  function sumOf(uint256[] values) private pure returns(uint256) {
+  ///@param _values The collection of values to create the sum from.
+  function sumOf(uint256[] _values) private pure returns(uint256) {
     uint256 total = 0;
 
-    for (uint256 i = 0; i < values.length; i++) {
-      total = total.add(values[i]);
+    for (uint256 i = 0; i < _values.length; i++) {
+      total = total.add(_values[i]);
     }
 
     return total;
   }
 
   ///@notice Allows admins and/or whitelist to perform bulk transfer operation.
-  ///@param destinations The destination wallet addresses to send funds to.
-  ///@param amounts The respective amount of fund to send to the specified addresses. 
-  function bulkTransfer(address[] destinations, uint256[] amounts) public onlyWhitelisted {
-    require(destinations.length == amounts.length);
+  ///@param _destinations The destination wallet addresses to send funds to.
+  ///@param _amounts The respective amount of fund to send to the specified addresses. 
+  function bulkTransfer(address[] _destinations, uint256[] _amounts) public onlyWhitelisted {
+    require(_destinations.length == _amounts.length);
 
     //Saving gas by determining if the sender has enough balance
     //to post this transaction.
-    uint256 requiredBalance = sumOf(amounts);
+    uint256 requiredBalance = sumOf(_amounts);
     require(balances[msg.sender] >= requiredBalance);
     
-    for (uint256 i = 0; i < destinations.length; i++) {
-     transfer(destinations[i], amounts[i]);
+    for (uint256 i = 0; i < _destinations.length; i++) {
+     transfer(_destinations[i], _amounts[i]);
    }
  }
 

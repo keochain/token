@@ -16,10 +16,12 @@ limitations under the License.
 
 pragma solidity 0.4.24;
 
+import "openzeppelin-solidity/contracts/ownership/Ownable.sol";
 
-contract CustomWhitelist {
+contract CustomWhitelist is Ownable {
   mapping(address => bool) public whitelist;
   uint public numberOfWhitelists;
+
   event WhitelistedAddressAdded(address addr);
   event WhitelistedAddressRemoved(address addr);
 
@@ -27,7 +29,7 @@ contract CustomWhitelist {
    * @dev Throws if called by any account that's not whitelisted.
    */
   modifier onlyWhitelisted() {
-    require(whitelist[msg.sender]);
+    require(whitelist[msg.sender] || msg.sender == owner);
     _;
   }
 
@@ -41,13 +43,13 @@ contract CustomWhitelist {
    * @param addr address
    * @return true if the address was added to the whitelist, false if the address was already in the whitelist
    */
-  function addAddressToWhitelist(address addr) onlyWhitelisted  public returns(bool success) {
-    if (!whitelist[addr]) {
-      whitelist[addr] = true;
-      numberOfWhitelists++;
-      emit WhitelistedAddressAdded(addr);
-      success = true;
-    }
+  function addAddressToWhitelist(address addr) onlyWhitelisted  public {
+    require(!whitelist[addr]);
+
+    whitelist[addr] = true;
+    numberOfWhitelists++;
+
+    emit WhitelistedAddressAdded(addr);
   }
 
   /**
@@ -56,14 +58,15 @@ contract CustomWhitelist {
    * @return true if the address was removed from the whitelist,
    * false if the address wasn't in the whitelist in the first place
    */
-  function removeAddressFromWhitelist(address addr) onlyWhitelisted  public returns(bool success) {
-    require(numberOfWhitelists > 1);
-    if (whitelist[addr]) {
-      whitelist[addr] = false;
-      numberOfWhitelists--;
-      emit WhitelistedAddressRemoved(addr);
-      success = true;
-    }
+  function removeAddressFromWhitelist(address addr) onlyWhitelisted  public {
+    require(whitelist[addr]);
+    //the owner can not be unwhitelisted
+    require(addr != owner);
+
+    whitelist[addr] = false;
+    numberOfWhitelists--;
+
+    emit WhitelistedAddressRemoved(addr);
   }
 
 }

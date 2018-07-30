@@ -16,15 +16,11 @@ contract CustomPausable is CustomWhitelist {
 
   modifier canTransfer(address _sender) {
     if(paused) {
-      if(whitelist[_sender] == false) {
+      if(!whitelist[_sender]) {
         revert();
-      } else {
-        _;
       }
-    }
-    else {
-      _;
-    }
+    }    
+    _;    
   }
 
   /**

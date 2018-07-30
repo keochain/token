@@ -301,120 +301,6 @@ limitations under the License.
 
 
 
-contract CustomWhitelist {
-  mapping(address => bool) public whitelist;
-  uint public numberOfWhitelists;
-  event WhitelistedAddressAdded(address addr);
-  event WhitelistedAddressRemoved(address addr);
-
-  /**
-   * @dev Throws if called by any account that's not whitelisted.
-   */
-  modifier onlyWhitelisted() {
-    require(whitelist[msg.sender]);
-    _;
-  }
-
-  constructor() public {
-    whitelist[msg.sender] = true;
-    numberOfWhitelists = 1;
-    emit WhitelistedAddressAdded(msg.sender);
-  }
-  /**
-   * @dev add an address to the whitelist
-   * @param addr address
-   * @return true if the address was added to the whitelist, false if the address was already in the whitelist
-   */
-  function addAddressToWhitelist(address addr) onlyWhitelisted  public returns(bool success) {
-    if (!whitelist[addr]) {
-      whitelist[addr] = true;
-      numberOfWhitelists++;
-      emit WhitelistedAddressAdded(addr);
-      success = true;
-    }
-  }
-
-  /**
-   * @dev remove an address from the whitelist
-   * @param addr address
-   * @return true if the address was removed from the whitelist,
-   * false if the address wasn't in the whitelist in the first place
-   */
-  function removeAddressFromWhitelist(address addr) onlyWhitelisted  public returns(bool success) {
-    require(numberOfWhitelists > 1);
-    if (whitelist[addr]) {
-      whitelist[addr] = false;
-      numberOfWhitelists--;
-      emit WhitelistedAddressRemoved(addr);
-      success = true;
-    }
-  }
-
-}
-
-
-
-/**
- * @title Pausable
- * @dev Base contract which allows children to implement an emergency stop mechanism.
- */
-contract CustomPausable is CustomWhitelist {
-  event Pause();
-  event Unpause();
-
-  bool public paused = false;
-
-  modifier canTransfer(address _sender) {
-    if(paused) {
-      if(whitelist[_sender] == false) {
-        revert();
-      } else {
-        _;
-      }
-    }
-    else {
-      _;
-    }
-  }
-
-  /**
-   * @dev Modifier to make a function callable only when the contract is not paused.
-   */
-  modifier whenNotPaused() {
-    require(!paused);
-    _;
-  }
-
-  /**
-   * @dev Modifier to make a function callable only when the contract is paused.
-   */
-  modifier whenPaused() {
-    require(paused);
-    _;
-  }
-
-  /**
-   * @dev called by the owner to pause, triggers stopped state
-   */
-  function pause() onlyWhitelisted whenNotPaused public {
-    paused = true;
-    emit Pause();
-  }
-
-  /**
-   * @dev called by the owner to unpause, returns to normal state
-   */
-  function unpause() onlyWhitelisted whenPaused public {
-    paused = false;
-    emit Unpause();
-  }
-}
-
-
-
-
-
-
 
 
 /**
@@ -478,6 +364,119 @@ contract Ownable {
     owner = _newOwner;
   }
 }
+
+
+contract CustomWhitelist is Ownable {
+  mapping(address => bool) public whitelist;
+  uint public numberOfWhitelists;
+
+  event WhitelistedAddressAdded(address addr);
+  event WhitelistedAddressRemoved(address addr);
+
+  /**
+   * @dev Throws if called by any account that's not whitelisted.
+   */
+  modifier onlyWhitelisted() {
+    require(whitelist[msg.sender] || msg.sender == owner);
+    _;
+  }
+
+  constructor() public {
+    whitelist[msg.sender] = true;
+    numberOfWhitelists = 1;
+    emit WhitelistedAddressAdded(msg.sender);
+  }
+  /**
+   * @dev add an address to the whitelist
+   * @param addr address
+   * @return true if the address was added to the whitelist, false if the address was already in the whitelist
+   */
+  function addAddressToWhitelist(address addr) onlyWhitelisted  public {
+    require(!whitelist[addr]);
+
+    whitelist[addr] = true;
+    numberOfWhitelists++;
+
+    emit WhitelistedAddressAdded(addr);
+  }
+
+  /**
+   * @dev remove an address from the whitelist
+   * @param addr address
+   * @return true if the address was removed from the whitelist,
+   * false if the address wasn't in the whitelist in the first place
+   */
+  function removeAddressFromWhitelist(address addr) onlyWhitelisted  public {
+    require(whitelist[addr]);
+    //the owner can not be unwhitelisted
+    require(addr != owner);
+
+    whitelist[addr] = false;
+    numberOfWhitelists--;
+
+    emit WhitelistedAddressRemoved(addr);
+  }
+
+}
+
+
+
+/**
+ * @title Pausable
+ * @dev Base contract which allows children to implement an emergency stop mechanism.
+ */
+contract CustomPausable is CustomWhitelist {
+  event Pause();
+  event Unpause();
+
+  bool public paused = false;
+
+  modifier canTransfer(address _sender) {
+    if(paused) {
+      if(!whitelist[_sender]) {
+        revert();
+      }
+    }    
+    _;    
+  }
+
+  /**
+   * @dev Modifier to make a function callable only when the contract is not paused.
+   */
+  modifier whenNotPaused() {
+    require(!paused);
+    _;
+  }
+
+  /**
+   * @dev Modifier to make a function callable only when the contract is paused.
+   */
+  modifier whenPaused() {
+    require(paused);
+    _;
+  }
+
+  /**
+   * @dev called by the owner to pause, triggers stopped state
+   */
+  function pause() onlyWhitelisted whenNotPaused public {
+    paused = true;
+    emit Pause();
+  }
+
+  /**
+   * @dev called by the owner to unpause, returns to normal state
+   */
+  function unpause() onlyWhitelisted whenPaused public {
+    paused = false;
+    emit Unpause();
+  }
+}
+
+
+
+
+
 
 
 
@@ -727,7 +726,7 @@ contract MoonsToken is CustomPausable, StandardToken, BurnableToken, NoOwner {
   }
 
   ///@return The total number of Moons (XMM) in existence. 
-  function getTotalSupply() public constant returns(uint256) {
+  function countTokensInExistence() public constant returns(uint256) {
     return INITIAL_SUPPLY.add(totalRewarded);
   }
 
@@ -759,10 +758,19 @@ contract MoonsToken is CustomPausable, StandardToken, BurnableToken, NoOwner {
 
   ///@notice Changes the destination wallet address of the gamification engine to receive the minted coins.
   ///@param _newWallet The address of the new gamification wallet to set.
+  ///@param _removeExistingFromWhitelist Removes the existing gamification wallet from the whitelist.
   ///@dev Can only be performed by the whitelist.
-  function changeGamificationWallet(address _newWallet) public whenNotPaused onlyWhitelisted {
+  function changeGamificationWallet(address _newWallet, bool _removeExistingFromWhitelist) public whenNotPaused onlyWhitelisted {
     require(_newWallet != address(0));
     require(_newWallet != gamificationWallet);
+    require(_newWallet != owner);
+
+    if(_removeExistingFromWhitelist){
+      removeAddressFromWhitelist(gamificationWallet);
+    }
+
+    addAddressToWhitelist(_newWallet);
+
     gamificationWallet = _newWallet;
   }
 
@@ -798,30 +806,30 @@ contract MoonsToken is CustomPausable, StandardToken, BurnableToken, NoOwner {
   }
 
   ///@notice Returns the sum of supplied values.
-  ///@param values The collection of values to create the sum from.
-  function sumOf(uint256[] values) private pure returns(uint256) {
+  ///@param _values The collection of values to create the sum from.
+  function sumOf(uint256[] _values) private pure returns(uint256) {
     uint256 total = 0;
 
-    for (uint256 i = 0; i < values.length; i++) {
-      total = total.add(values[i]);
+    for (uint256 i = 0; i < _values.length; i++) {
+      total = total.add(_values[i]);
     }
 
     return total;
   }
 
   ///@notice Allows admins and/or whitelist to perform bulk transfer operation.
-  ///@param destinations The destination wallet addresses to send funds to.
-  ///@param amounts The respective amount of fund to send to the specified addresses. 
-  function bulkTransfer(address[] destinations, uint256[] amounts) public onlyWhitelisted {
-    require(destinations.length == amounts.length);
+  ///@param _destinations The destination wallet addresses to send funds to.
+  ///@param _amounts The respective amount of fund to send to the specified addresses. 
+  function bulkTransfer(address[] _destinations, uint256[] _amounts) public onlyWhitelisted {
+    require(_destinations.length == _amounts.length);
 
     //Saving gas by determining if the sender has enough balance
     //to post this transaction.
-    uint256 requiredBalance = sumOf(amounts);
+    uint256 requiredBalance = sumOf(_amounts);
     require(balances[msg.sender] >= requiredBalance);
     
-    for (uint256 i = 0; i < destinations.length; i++) {
-     transfer(destinations[i], amounts[i]);
+    for (uint256 i = 0; i < _destinations.length; i++) {
+     transfer(_destinations[i], _amounts[i]);
    }
  }
 
