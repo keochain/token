@@ -17,7 +17,7 @@ limitations under the License.
 pragma solidity 0.4.24;
 import "openzeppelin-solidity/contracts/token/ERC20/StandardToken.sol";
 import "./CustomPausable.sol";
-import "openzeppelin-solidity/contracts/ownership/CanReclaimToken.sol";
+import "openzeppelin-solidity/contracts/ownership/NoOwner.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/BurnableToken.sol";
 
 ///@title Moons Token
@@ -31,15 +31,15 @@ import "openzeppelin-solidity/contracts/token/ERC20/BurnableToken.sol";
 ///term requires patience and endurance. It’s easy to fall into traps when there are pumps or dips.
 ///With gamification users can both be educated about the upsides of staying out of the game of
 ///quick returns and provided some of the same emotional thrills that trading gives.
-contract MoonsToken is CustomPausable, StandardToken, BurnableToken, CanReclaimToken {
+contract MoonsToken is CustomPausable, StandardToken, BurnableToken, NoOwner {
   string public constant name = "Moons";
   string public constant symbol = "XMM";
   uint8 public constant decimals = 18;
   uint256 public constant INITIAL_SUPPLY = 1000000000 * (10 ** uint256(decimals));
 
   uint256 public constant GAMIFICATION_TOKEN_ALLOCATION_PER_DAY = 30000 * (10 ** uint256(decimals));
-  uint256 public totalMinted = 0;
-  uint256 public creationTime;
+  uint256 public totalRewarded = 0;
+  uint256 public rewardBeganSince;
   address public gamificationWallet;
 
 
@@ -47,31 +47,42 @@ contract MoonsToken is CustomPausable, StandardToken, BurnableToken, CanReclaimT
   event Mint(address indexed to, uint256 amount);
 
   ///@param	_gamificationWallet The wallet address used for the gamification feature.
-  ///@dev Set "creationTime" as a constant during deployment and remove this comment.
+  ///@dev Set "rewardBeganSince" as a constant during deployment and remove this comment.
   constructor(address _gamificationWallet) public {
     require(_gamificationWallet != address(0));
     require(_gamificationWallet != msg.sender);
-    creationTime = now;
+
     gamificationWallet = _gamificationWallet;
+    super.addAddressToWhitelist(_gamificationWallet);
+
+    rewardBeganSince = now;
+
     totalSupply_ = INITIAL_SUPPLY;
     balances[msg.sender] = INITIAL_SUPPLY;
+
     emit Transfer(address(0), msg.sender, INITIAL_SUPPLY);
-    super.addAddressToWhitelist(_gamificationWallet);
   }
 
   ///@notice Mints the specified amount of tokens.
   ///@param _to The address which will receive the minted tokens.
   ///@param _amount The amount of tokens to be minted.
-  function mint(address _to, uint256 _amount) internal {
+  function mint(address _to, uint256 _amount) private {
     totalSupply_ = totalSupply_.add(_amount);
     balances[_to] = balances[_to].add(_amount);
 
     emit Mint(_to, _amount);
   }
 
+  ///@return The total number of Moons (XMM) in existence. 
+  function getTotalSupply() public constant returns(uint256) {
+    return INITIAL_SUPPLY.add(totalRewarded);
+  }
+
+  ///@notice This feature is used by moonwhale gamification engine to provide daily rewards to the community. 
+  ///Please refer to the whitepaper for more information.
   ///@return The total number of tokens that should have been minted by the gamification engine.
   function getMintingSupply() public constant returns(uint256) {
-    uint256 diff = now - creationTime;
+    uint256 diff = now - rewardBeganSince;
     uint256 supply = diff.div(1 days).mul(GAMIFICATION_TOKEN_ALLOCATION_PER_DAY);
     return supply;
   }
@@ -82,14 +93,14 @@ contract MoonsToken is CustomPausable, StandardToken, BurnableToken, CanReclaimT
   ///engine. The minting of new tokens amounts to an inflation of around 1.095% per annum
   ///based on the initial supply of 1 billion tokens.
   function mint() public whenNotPaused onlyWhitelisted {
-    require(now > creationTime);
+    require(now > rewardBeganSince);
 
     uint256 mintingSupply = getMintingSupply();
-    uint256 tokensToMint = mintingSupply.sub(totalMinted);
+    uint256 reward = mintingSupply.sub(totalRewarded);
 
-    if(tokensToMint > 0) {
-      mint(gamificationWallet, tokensToMint);
-      totalMinted = totalMinted.add(tokensToMint);
+    if(reward > 0) {
+      mint(gamificationWallet, reward);
+      totalRewarded = totalRewarded.add(reward);
     }
   }
 
@@ -104,42 +115,58 @@ contract MoonsToken is CustomPausable, StandardToken, BurnableToken, CanReclaimT
 
   ///@dev This function is overriden to leverage Pausable feature.
   function transferFrom(address _from, address _to, uint256 _value) canTransfer(_from) public returns (bool) {
+    require(_to != address(0));
     return super.transferFrom(_from, _to, _value);
   }
 
   ///@dev This function is overriden to leverage Pausable feature.
   function approve(address _spender, uint256 _value) public canTransfer(msg.sender) returns (bool) {
+    require(_spender != address(0));
     return super.approve(_spender, _value);
   }
 
 
   ///@dev This function is overriden to leverage Pausable feature.
   function increaseApproval(address _spender,uint256 _addedValue) public canTransfer(msg.sender) returns(bool) {
+    require(_spender != address(0));
     return super.increaseApproval(_spender, _addedValue);
   }
 
   ///@dev This function is overriden to leverage Pausable feature.
   function decreaseApproval(address _spender, uint256 _subtractedValue) public canTransfer(msg.sender) whenNotPaused returns (bool) {
+    require(_spender != address(0));
     return super.decreaseApproval(_spender, _subtractedValue);
   }
 
   ///@dev This function is overriden to leverage Pausable feature.
   function transfer(address _to, uint256 _value) public canTransfer(msg.sender) returns (bool) {
+    require(_to != address(0));
     return super.transfer(_to, _value);
   }
 
+  ///@notice Returns the sum of supplied values.
+  ///@param values The collection of values to create the sum from.
   function sumOf(uint256[] values) private pure returns(uint256) {
     uint256 total = 0;
+
     for (uint256 i = 0; i < values.length; i++) {
       total = total.add(values[i]);
     }
+
     return total;
   }
 
-  function bulkTransfer(address[] destinations, uint256[] amounts) onlyWhitelisted public {
-    uint256 requiredBalance = sumOf(amounts);
+  ///@notice Allows admins and/or whitelist to perform bulk transfer operation.
+  ///@param destinations The destination wallet addresses to send funds to.
+  ///@param amounts The respective amount of fund to send to the specified addresses. 
+  function bulkTransfer(address[] destinations, uint256[] amounts) public onlyWhitelisted {
     require(destinations.length == amounts.length);
+
+    //Saving gas by determining if the sender has enough balance
+    //to post this transaction.
+    uint256 requiredBalance = sumOf(amounts);
     require(balances[msg.sender] >= requiredBalance);
+    
     for (uint256 i = 0; i < destinations.length; i++) {
      transfer(destinations[i], amounts[i]);
    }
@@ -150,10 +177,5 @@ contract MoonsToken is CustomPausable, StandardToken, BurnableToken, CanReclaimT
   ///@dev This function is overriden to leverage Pausable feature.
   function burn(uint256 _value) public whenNotPaused onlyWhitelisted {
     super.burn(_value);
-  }
-
-  ///@notice Disallows incoming transactions to this contract address.
-  function() external {
-    revert("This action is not supported.");
   }
 }

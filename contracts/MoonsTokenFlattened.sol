@@ -21,325 +21,6 @@ pragma solidity 0.4.24;
 
 
 
-/**
- * @title Ownable
- * @dev The Ownable contract has an owner address, and provides basic authorization control
- * functions, this simplifies the implementation of "user permissions".
- */
-contract Ownable {
-  address public owner;
-
-
-  event OwnershipRenounced(address indexed previousOwner);
-  event OwnershipTransferred(
-    address indexed previousOwner,
-    address indexed newOwner
-  );
-
-
-  /**
-   * @dev The Ownable constructor sets the original `owner` of the contract to the sender
-   * account.
-   */
-  constructor() public {
-    owner = msg.sender;
-  }
-
-  /**
-   * @dev Throws if called by any account other than the owner.
-   */
-  modifier onlyOwner() {
-    require(msg.sender == owner);
-    _;
-  }
-
-  /**
-   * @dev Allows the current owner to relinquish control of the contract.
-   * @notice Renouncing to ownership will leave the contract without an owner.
-   * It will not be possible to call the functions with the `onlyOwner`
-   * modifier anymore.
-   */
-  function renounceOwnership() public onlyOwner {
-    emit OwnershipRenounced(owner);
-    owner = address(0);
-  }
-
-  /**
-   * @dev Allows the current owner to transfer control of the contract to a newOwner.
-   * @param _newOwner The address to transfer ownership to.
-   */
-  function transferOwnership(address _newOwner) public onlyOwner {
-    _transferOwnership(_newOwner);
-  }
-
-  /**
-   * @dev Transfers control of the contract to a newOwner.
-   * @param _newOwner The address to transfer ownership to.
-   */
-  function _transferOwnership(address _newOwner) internal {
-    require(_newOwner != address(0));
-    emit OwnershipTransferred(owner, _newOwner);
-    owner = _newOwner;
-  }
-}
-
-
-
-
-
-
-/**
- * @title Roles
- * @author Francisco Giordano (@frangio)
- * @dev Library for managing addresses assigned to a Role.
- * See RBAC.sol for example usage.
- */
-library Roles {
-  struct Role {
-    mapping (address => bool) bearer;
-  }
-
-  /**
-   * @dev give an address access to this role
-   */
-  function add(Role storage role, address addr)
-    internal
-  {
-    role.bearer[addr] = true;
-  }
-
-  /**
-   * @dev remove an address' access to this role
-   */
-  function remove(Role storage role, address addr)
-    internal
-  {
-    role.bearer[addr] = false;
-  }
-
-  /**
-   * @dev check if an address has this role
-   * // reverts
-   */
-  function check(Role storage role, address addr)
-    view
-    internal
-  {
-    require(has(role, addr));
-  }
-
-  /**
-   * @dev check if an address has this role
-   * @return bool
-   */
-  function has(Role storage role, address addr)
-    view
-    internal
-    returns (bool)
-  {
-    return role.bearer[addr];
-  }
-}
-
-
-
-/**
- * @title RBAC (Role-Based Access Control)
- * @author Matt Condon (@Shrugs)
- * @dev Stores and provides setters and getters for roles and addresses.
- * Supports unlimited numbers of roles and addresses.
- * See //contracts/mocks/RBACMock.sol for an example of usage.
- * This RBAC method uses strings to key roles. It may be beneficial
- * for you to write your own implementation of this interface using Enums or similar.
- * It's also recommended that you define constants in the contract, like ROLE_ADMIN below,
- * to avoid typos.
- */
-contract RBAC {
-  using Roles for Roles.Role;
-
-  mapping (string => Roles.Role) private roles;
-
-  event RoleAdded(address indexed operator, string role);
-  event RoleRemoved(address indexed operator, string role);
-
-  /**
-   * @dev reverts if addr does not have role
-   * @param _operator address
-   * @param _role the name of the role
-   * // reverts
-   */
-  function checkRole(address _operator, string _role)
-    view
-    public
-  {
-    roles[_role].check(_operator);
-  }
-
-  /**
-   * @dev determine if addr has role
-   * @param _operator address
-   * @param _role the name of the role
-   * @return bool
-   */
-  function hasRole(address _operator, string _role)
-    view
-    public
-    returns (bool)
-  {
-    return roles[_role].has(_operator);
-  }
-
-  /**
-   * @dev add a role to an address
-   * @param _operator address
-   * @param _role the name of the role
-   */
-  function addRole(address _operator, string _role)
-    internal
-  {
-    roles[_role].add(_operator);
-    emit RoleAdded(_operator, _role);
-  }
-
-  /**
-   * @dev remove a role from an address
-   * @param _operator address
-   * @param _role the name of the role
-   */
-  function removeRole(address _operator, string _role)
-    internal
-  {
-    roles[_role].remove(_operator);
-    emit RoleRemoved(_operator, _role);
-  }
-
-  /**
-   * @dev modifier to scope access to a single role (uses msg.sender as addr)
-   * @param _role the name of the role
-   * // reverts
-   */
-  modifier onlyRole(string _role)
-  {
-    checkRole(msg.sender, _role);
-    _;
-  }
-
-  /**
-   * @dev modifier to scope access to a set of roles (uses msg.sender as addr)
-   * @param _roles the names of the roles to scope access to
-   * // reverts
-   *
-   * @TODO - when solidity supports dynamic arrays as arguments to modifiers, provide this
-   *  see: https://github.com/ethereum/solidity/issues/2467
-   */
-  // modifier onlyRoles(string[] _roles) {
-  //     bool hasAnyRole = false;
-  //     for (uint8 i = 0; i < _roles.length; i++) {
-  //         if (hasRole(msg.sender, _roles[i])) {
-  //             hasAnyRole = true;
-  //             break;
-  //         }
-  //     }
-
-  //     require(hasAnyRole);
-
-  //     _;
-  // }
-}
-
-
-
-/**
- * @title Whitelist
- * @dev The Whitelist contract has a whitelist of addresses, and provides basic authorization control functions.
- * This simplifies the implementation of "user permissions".
- */
-contract Whitelist is Ownable, RBAC {
-  string public constant ROLE_WHITELISTED = "whitelist";
-
-  /**
-   * @dev Throws if operator is not whitelisted.
-   * @param _operator address
-   */
-  modifier onlyIfWhitelisted(address _operator) {
-    checkRole(_operator, ROLE_WHITELISTED);
-    _;
-  }
-
-  /**
-   * @dev add an address to the whitelist
-   * @param _operator address
-   * @return true if the address was added to the whitelist, false if the address was already in the whitelist
-   */
-  function addAddressToWhitelist(address _operator)
-    onlyOwner
-    public
-  {
-    addRole(_operator, ROLE_WHITELISTED);
-  }
-
-  /**
-   * @dev getter to determine if address is in whitelist
-   */
-  function whitelist(address _operator)
-    public
-    view
-    returns (bool)
-  {
-    return hasRole(_operator, ROLE_WHITELISTED);
-  }
-
-  /**
-   * @dev add addresses to the whitelist
-   * @param _operators addresses
-   * @return true if at least one address was added to the whitelist,
-   * false if all addresses were already in the whitelist
-   */
-  function addAddressesToWhitelist(address[] _operators)
-    onlyOwner
-    public
-  {
-    for (uint256 i = 0; i < _operators.length; i++) {
-      addAddressToWhitelist(_operators[i]);
-    }
-  }
-
-  /**
-   * @dev remove an address from the whitelist
-   * @param _operator address
-   * @return true if the address was removed from the whitelist,
-   * false if the address wasn't in the whitelist in the first place
-   */
-  function removeAddressFromWhitelist(address _operator)
-    onlyOwner
-    public
-  {
-    removeRole(_operator, ROLE_WHITELISTED);
-  }
-
-  /**
-   * @dev remove addresses from the whitelist
-   * @param _operators addresses
-   * @return true if at least one address was removed from the whitelist,
-   * false if all addresses weren't in the whitelist in the first place
-   */
-  function removeAddressesFromWhitelist(address[] _operators)
-    onlyOwner
-    public
-  {
-    for (uint256 i = 0; i < _operators.length; i++) {
-      removeAddressFromWhitelist(_operators[i]);
-    }
-  }
-
-}
-
-
-
-
-
-
-
 
 
 /**
@@ -601,6 +282,75 @@ contract StandardToken is ERC20, BasicToken {
 
 
 
+/*
+Copyright 2018 Moonwhale
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ */
+
+
+
+
+contract CustomWhitelist {
+  mapping(address => bool) public whitelist;
+  uint public numberOfWhitelists;
+  event WhitelistedAddressAdded(address addr);
+  event WhitelistedAddressRemoved(address addr);
+
+  /**
+   * @dev Throws if called by any account that's not whitelisted.
+   */
+  modifier onlyWhitelisted() {
+    require(whitelist[msg.sender]);
+    _;
+  }
+
+  constructor() public {
+    whitelist[msg.sender] = true;
+    numberOfWhitelists = 1;
+    emit WhitelistedAddressAdded(msg.sender);
+  }
+  /**
+   * @dev add an address to the whitelist
+   * @param addr address
+   * @return true if the address was added to the whitelist, false if the address was already in the whitelist
+   */
+  function addAddressToWhitelist(address addr) onlyWhitelisted  public returns(bool success) {
+    if (!whitelist[addr]) {
+      whitelist[addr] = true;
+      numberOfWhitelists++;
+      emit WhitelistedAddressAdded(addr);
+      success = true;
+    }
+  }
+
+  /**
+   * @dev remove an address from the whitelist
+   * @param addr address
+   * @return true if the address was removed from the whitelist,
+   * false if the address wasn't in the whitelist in the first place
+   */
+  function removeAddressFromWhitelist(address addr) onlyWhitelisted  public returns(bool success) {
+    require(numberOfWhitelists > 1);
+    if (whitelist[addr]) {
+      whitelist[addr] = false;
+      numberOfWhitelists--;
+      emit WhitelistedAddressRemoved(addr);
+      success = true;
+    }
+  }
+
+}
 
 
 
@@ -608,12 +358,24 @@ contract StandardToken is ERC20, BasicToken {
  * @title Pausable
  * @dev Base contract which allows children to implement an emergency stop mechanism.
  */
-contract Pausable is Ownable {
+contract CustomPausable is CustomWhitelist {
   event Pause();
   event Unpause();
 
   bool public paused = false;
 
+  modifier canTransfer(address _sender) {
+    if(paused) {
+      if(whitelist[_sender] == false) {
+        revert();
+      } else {
+        _;
+      }
+    }
+    else {
+      _;
+    }
+  }
 
   /**
    * @dev Modifier to make a function callable only when the contract is not paused.
@@ -634,7 +396,7 @@ contract Pausable is Ownable {
   /**
    * @dev called by the owner to pause, triggers stopped state
    */
-  function pause() onlyOwner whenNotPaused public {
+  function pause() onlyWhitelisted whenNotPaused public {
     paused = true;
     emit Pause();
   }
@@ -642,11 +404,121 @@ contract Pausable is Ownable {
   /**
    * @dev called by the owner to unpause, returns to normal state
    */
-  function unpause() onlyOwner whenPaused public {
+  function unpause() onlyWhitelisted whenPaused public {
     paused = false;
     emit Unpause();
   }
 }
+
+
+
+
+
+
+
+
+/**
+ * @title Ownable
+ * @dev The Ownable contract has an owner address, and provides basic authorization control
+ * functions, this simplifies the implementation of "user permissions".
+ */
+contract Ownable {
+  address public owner;
+
+
+  event OwnershipRenounced(address indexed previousOwner);
+  event OwnershipTransferred(
+    address indexed previousOwner,
+    address indexed newOwner
+  );
+
+
+  /**
+   * @dev The Ownable constructor sets the original `owner` of the contract to the sender
+   * account.
+   */
+  constructor() public {
+    owner = msg.sender;
+  }
+
+  /**
+   * @dev Throws if called by any account other than the owner.
+   */
+  modifier onlyOwner() {
+    require(msg.sender == owner);
+    _;
+  }
+
+  /**
+   * @dev Allows the current owner to relinquish control of the contract.
+   * @notice Renouncing to ownership will leave the contract without an owner.
+   * It will not be possible to call the functions with the `onlyOwner`
+   * modifier anymore.
+   */
+  function renounceOwnership() public onlyOwner {
+    emit OwnershipRenounced(owner);
+    owner = address(0);
+  }
+
+  /**
+   * @dev Allows the current owner to transfer control of the contract to a newOwner.
+   * @param _newOwner The address to transfer ownership to.
+   */
+  function transferOwnership(address _newOwner) public onlyOwner {
+    _transferOwnership(_newOwner);
+  }
+
+  /**
+   * @dev Transfers control of the contract to a newOwner.
+   * @param _newOwner The address to transfer ownership to.
+   */
+  function _transferOwnership(address _newOwner) internal {
+    require(_newOwner != address(0));
+    emit OwnershipTransferred(owner, _newOwner);
+    owner = _newOwner;
+  }
+}
+
+
+
+/**
+ * @title Contracts that should not own Ether
+ * @author Remco Bloemen <remco@2π.com>
+ * @dev This tries to block incoming ether to prevent accidental loss of Ether. Should Ether end up
+ * in the contract, it will allow the owner to reclaim this ether.
+ * @notice Ether can still be sent to this contract by:
+ * calling functions labeled `payable`
+ * `selfdestruct(contract_address)`
+ * mining directly to the contract address
+ */
+contract HasNoEther is Ownable {
+
+  /**
+  * @dev Constructor that rejects incoming Ether
+  * The `payable` flag is added so we can access `msg.value` without compiler warning. If we
+  * leave out payable, then Solidity will allow inheriting contracts to implement a payable
+  * constructor. By doing it this way we prevent a payable constructor from working. Alternatively
+  * we could use assembly to access msg.value.
+  */
+  constructor() public payable {
+    require(msg.value == 0);
+  }
+
+  /**
+   * @dev Disallows direct send by settings a default function without the `payable` flag.
+   */
+  function() external {
+  }
+
+  /**
+   * @dev Transfer all Ether held by the contract to the owner.
+   */
+  function reclaimEther() external onlyOwner {
+    owner.transfer(address(this).balance);
+  }
+}
+
+
 
 
 
@@ -709,6 +581,66 @@ contract CanReclaimToken is Ownable {
 
 
 
+/**
+ * @title Contracts that should not own Tokens
+ * @author Remco Bloemen <remco@2π.com>
+ * @dev This blocks incoming ERC223 tokens to prevent accidental loss of tokens.
+ * Should tokens (any ERC20Basic compatible) end up in the contract, it allows the
+ * owner to reclaim the tokens.
+ */
+contract HasNoTokens is CanReclaimToken {
+
+ /**
+  * @dev Reject all ERC223 compatible tokens
+  * @param from_ address The address that is transferring the tokens
+  * @param value_ uint256 the amount of the specified token
+  * @param data_ Bytes The data passed from the caller.
+  */
+  function tokenFallback(address from_, uint256 value_, bytes data_) external {
+    from_;
+    value_;
+    data_;
+    revert();
+  }
+
+}
+
+
+
+
+
+
+/**
+ * @title Contracts that should not own Contracts
+ * @author Remco Bloemen <remco@2π.com>
+ * @dev Should contracts (anything Ownable) end up being owned by this contract, it allows the owner
+ * of this contract to reclaim ownership of the contracts.
+ */
+contract HasNoContracts is Ownable {
+
+  /**
+   * @dev Reclaim ownership of Ownable contracts
+   * @param contractAddr The address of the Ownable to be reclaimed.
+   */
+  function reclaimContract(address contractAddr) external onlyOwner {
+    Ownable contractInst = Ownable(contractAddr);
+    contractInst.transferOwnership(owner);
+  }
+}
+
+
+
+/**
+ * @title Base contract for contracts that should not own things.
+ * @author Remco Bloemen <remco@2π.com>
+ * @dev Solves a class of errors where a contract accidentally becomes owner of Ether, Tokens or
+ * Owned contracts. See respective base contracts for details.
+ */
+contract NoOwner is HasNoEther, HasNoTokens, HasNoContracts {
+}
+
+
+
 
 
 
@@ -743,7 +675,7 @@ contract BurnableToken is BasicToken {
 
 ///@title Moons Token
 ///@author http://moonwhale.io
-///@notice Moons is the utility token of the Moonwhale ecosystem. 
+///@notice Moons is the utility token of the Moonwhale ecosystem.
 ///Moons will be distributed through a public ICO. A small portion of
 ///Moons will be distributed for free for gamification purposes, rewarding a long-term investor
 ///mindset and engagement in the Moonwhale App.
@@ -752,31 +684,31 @@ contract BurnableToken is BasicToken {
 ///term requires patience and endurance. It’s easy to fall into traps when there are pumps or dips.
 ///With gamification users can both be educated about the upsides of staying out of the game of
 ///quick returns and provided some of the same emotional thrills that trading gives.
-contract MoonsToken is StandardToken, BurnableToken, Whitelist, Pausable, CanReclaimToken {
+contract MoonsToken is CustomPausable, StandardToken, BurnableToken, NoOwner {
   string public constant name = "Moons";
   string public constant symbol = "XMM";
   uint8 public constant decimals = 18;
   uint256 public constant INITIAL_SUPPLY = 1000000000 * (10 ** uint256(decimals));
 
   uint256 public constant GAMIFICATION_TOKEN_ALLOCATION_PER_DAY = 30000 * (10 ** uint256(decimals));
-  uint256 public totalMinted = 0;
-  uint256 public creationTime;
+  uint256 public totalRewarded = 0;
+  uint256 public rewardBeganSince;
   address public gamificationWallet;
+
+
 
   event Mint(address indexed to, uint256 amount);
 
   ///@param	_gamificationWallet The wallet address used for the gamification feature.
-  ///@dev Set "creationTime" as a constant during deployment and remove this comment.
+  ///@dev Set "rewardBeganSince" as a constant during deployment and remove this comment.
   constructor(address _gamificationWallet) public {
     require(_gamificationWallet != address(0));
     require(_gamificationWallet != msg.sender);
 
-    creationTime = now;
-
-    super.addAddressToWhitelist(msg.sender);
+    gamificationWallet = _gamificationWallet;
     super.addAddressToWhitelist(_gamificationWallet);
 
-    gamificationWallet = _gamificationWallet;
+    rewardBeganSince = now;
 
     totalSupply_ = INITIAL_SUPPLY;
     balances[msg.sender] = INITIAL_SUPPLY;
@@ -787,16 +719,23 @@ contract MoonsToken is StandardToken, BurnableToken, Whitelist, Pausable, CanRec
   ///@notice Mints the specified amount of tokens.
   ///@param _to The address which will receive the minted tokens.
   ///@param _amount The amount of tokens to be minted.
-  function mint(address _to, uint256 _amount) internal {
+  function mint(address _to, uint256 _amount) private {
     totalSupply_ = totalSupply_.add(_amount);
     balances[_to] = balances[_to].add(_amount);
 
     emit Mint(_to, _amount);
   }
 
+  ///@return The total number of Moons (XMM) in existence. 
+  function getTotalSupply() public constant returns(uint256) {
+    return INITIAL_SUPPLY.add(totalRewarded);
+  }
+
+  ///@notice This feature is used by moonwhale gamification engine to provide daily rewards to the community. 
+  ///Please refer to the whitepaper for more information.
   ///@return The total number of tokens that should have been minted by the gamification engine.
   function getMintingSupply() public constant returns(uint256) {
-    uint256 diff = now - creationTime;
+    uint256 diff = now - rewardBeganSince;
     uint256 supply = diff.div(1 days).mul(GAMIFICATION_TOKEN_ALLOCATION_PER_DAY);
     return supply;
   }
@@ -806,63 +745,90 @@ contract MoonsToken is StandardToken, BurnableToken, Whitelist, Pausable, CanRec
   ///They are distributed to active users as rewards in the gamification
   ///engine. The minting of new tokens amounts to an inflation of around 1.095% per annum
   ///based on the initial supply of 1 billion tokens.
-  function mint() public whenNotPaused onlyIfWhitelisted(msg.sender) {
-    require(now > creationTime);
+  function mint() public whenNotPaused onlyWhitelisted {
+    require(now > rewardBeganSince);
 
     uint256 mintingSupply = getMintingSupply();
-    uint256 tokensToMint = mintingSupply.sub(totalMinted);
+    uint256 reward = mintingSupply.sub(totalRewarded);
 
-    if(tokensToMint > 0) {
-      mint(gamificationWallet, tokensToMint);
-      totalMinted = totalMinted.add(tokensToMint);
+    if(reward > 0) {
+      mint(gamificationWallet, reward);
+      totalRewarded = totalRewarded.add(reward);
     }
   }
 
   ///@notice Changes the destination wallet address of the gamification engine to receive the minted coins.
   ///@param _newWallet The address of the new gamification wallet to set.
   ///@dev Can only be performed by the whitelist.
-  function changeGamificationWallet(address _newWallet) public whenNotPaused onlyIfWhitelisted(msg.sender) {
+  function changeGamificationWallet(address _newWallet) public whenNotPaused onlyWhitelisted {
     require(_newWallet != address(0));
     require(_newWallet != gamificationWallet);
-
     gamificationWallet = _newWallet;
   }
 
   ///@dev This function is overriden to leverage Pausable feature.
-  function transferFrom(address _from, address _to, uint256 _value) public whenNotPaused returns (bool) {
+  function transferFrom(address _from, address _to, uint256 _value) canTransfer(_from) public returns (bool) {
+    require(_to != address(0));
     return super.transferFrom(_from, _to, _value);
   }
 
   ///@dev This function is overriden to leverage Pausable feature.
-  function approve(address _spender, uint256 _value) public whenNotPaused returns (bool) {
+  function approve(address _spender, uint256 _value) public canTransfer(msg.sender) returns (bool) {
+    require(_spender != address(0));
     return super.approve(_spender, _value);
   }
 
 
   ///@dev This function is overriden to leverage Pausable feature.
-  function increaseApproval(address _spender,uint256 _addedValue) public whenNotPaused returns(bool) {
+  function increaseApproval(address _spender,uint256 _addedValue) public canTransfer(msg.sender) returns(bool) {
+    require(_spender != address(0));
     return super.increaseApproval(_spender, _addedValue);
   }
 
   ///@dev This function is overriden to leverage Pausable feature.
-  function decreaseApproval(address _spender, uint256 _subtractedValue) public whenNotPaused returns (bool) {
+  function decreaseApproval(address _spender, uint256 _subtractedValue) public canTransfer(msg.sender) whenNotPaused returns (bool) {
+    require(_spender != address(0));
     return super.decreaseApproval(_spender, _subtractedValue);
   }
 
   ///@dev This function is overriden to leverage Pausable feature.
-  function transfer(address _to, uint256 _value) public whenNotPaused returns (bool) {
+  function transfer(address _to, uint256 _value) public canTransfer(msg.sender) returns (bool) {
+    require(_to != address(0));
     return super.transfer(_to, _value);
   }
+
+  ///@notice Returns the sum of supplied values.
+  ///@param values The collection of values to create the sum from.
+  function sumOf(uint256[] values) private pure returns(uint256) {
+    uint256 total = 0;
+
+    for (uint256 i = 0; i < values.length; i++) {
+      total = total.add(values[i]);
+    }
+
+    return total;
+  }
+
+  ///@notice Allows admins and/or whitelist to perform bulk transfer operation.
+  ///@param destinations The destination wallet addresses to send funds to.
+  ///@param amounts The respective amount of fund to send to the specified addresses. 
+  function bulkTransfer(address[] destinations, uint256[] amounts) public onlyWhitelisted {
+    require(destinations.length == amounts.length);
+
+    //Saving gas by determining if the sender has enough balance
+    //to post this transaction.
+    uint256 requiredBalance = sumOf(amounts);
+    require(balances[msg.sender] >= requiredBalance);
+    
+    for (uint256 i = 0; i < destinations.length; i++) {
+     transfer(destinations[i], amounts[i]);
+   }
+ }
 
   ///@notice Burns the coins held by the sender.
   ///@param _value The amount of coins to burn.
   ///@dev This function is overriden to leverage Pausable feature.
-  function burn(uint256 _value) public whenNotPaused {
+  function burn(uint256 _value) public whenNotPaused onlyWhitelisted {
     super.burn(_value);
-  }
-
-  ///@notice Disallows incoming transactions to this contract address.
-  function() external {
-    revert("This action is not supported.");
   }
 }
