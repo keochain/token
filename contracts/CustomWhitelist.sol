@@ -41,7 +41,6 @@ contract CustomWhitelist is Ownable {
   /**
    * @dev add an address to the whitelist
    * @param addr address
-   * @return true if the address was added to the whitelist, false if the address was already in the whitelist
    */
   function addAddressToWhitelist(address addr) onlyWhitelisted  public {
     require(!whitelist[addr]);
@@ -55,8 +54,6 @@ contract CustomWhitelist is Ownable {
   /**
    * @dev remove an address from the whitelist
    * @param addr address
-   * @return true if the address was removed from the whitelist,
-   * false if the address wasn't in the whitelist in the first place
    */
   function removeAddressFromWhitelist(address addr) onlyWhitelisted  public {
     require(whitelist[addr]);
