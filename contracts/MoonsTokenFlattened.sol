@@ -368,7 +368,7 @@ contract Ownable {
 
 contract CustomWhitelist is Ownable {
   mapping(address => bool) public whitelist;
-  uint public numberOfWhitelists;
+  uint256 public numberOfWhitelists;
 
   event WhitelistedAddressAdded(address addr);
   event WhitelistedAddressRemoved(address addr);
@@ -391,6 +391,7 @@ contract CustomWhitelist is Ownable {
    * @param addr address
    */
   function addAddressToWhitelist(address addr) onlyWhitelisted  public {
+    require(addr != address(0));
     require(!whitelist[addr]);
 
     whitelist[addr] = true;
@@ -404,6 +405,7 @@ contract CustomWhitelist is Ownable {
    * @param addr address
    */
   function removeAddressFromWhitelist(address addr) onlyWhitelisted  public {
+    require(addr != address(0));
     require(whitelist[addr]);
     //the owner can not be unwhitelisted
     require(addr != owner);
