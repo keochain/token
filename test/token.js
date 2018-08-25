@@ -1,4 +1,4 @@
-const Token = artifacts.require('MoonsToken');
+const Token = artifacts.require('KeochainToken');
 import BigNumber  from 'bignumber.js';
 import latestTime from './helpers/latestTime.js'
 import ether from './helpers/ether.js';
@@ -20,12 +20,12 @@ contract('Token', async function(accounts) {
 
       const INITIAL_SUPPLY = ether(1000000000); //1 B * 10^18
       const tokensMintedPerDay = ether(30000); // 30000 * 10^18
-      assert((await token.name()) === 'Moons');
+      assert((await token.name()) === 'Keochain');
       assert((await token.decimals()).toString() === '18');
       assert((await token.gamificationWallet()) === gamificationWallet);
 
       (await token.GAMIFICATION_TOKEN_ALLOCATION_PER_DAY()).should.be.bignumber.equal(tokensMintedPerDay);
-      assert((await token.symbol()) === 'XMM');
+      assert((await token.symbol()) === 'KEO');
       (await token.INITIAL_SUPPLY()).should.be.bignumber.equal(INITIAL_SUPPLY);
       const initialBalance = await token.balanceOf(owner);
       initialBalance.should.be.bignumber.equal(INITIAL_SUPPLY);
@@ -167,6 +167,8 @@ contract('Token', async function(accounts) {
     let token;
     beforeEach(async () => {
       token = await Token.new(accounts[4]);
+      await token.addAddressToWhitelist(accounts[2]);
+      await token.addAddressToWhitelist(accounts[3]);
       await token.transfer(accounts[1], 100)
       await token.pause();
     });
@@ -193,10 +195,9 @@ contract('Token', async function(accounts) {
 
     it('non whitelisted address cannot increase Approval when paused', async () => {
       await token.unpause();
-      await token.transfer(accounts[2], 100);
-      await token.approve(accounts[3], 10, {from: accounts[2]})
+      await token.transfer(accounts[5], 100);
       await token.pause();
-      await token.increaseApproval(accounts[3], 10, {from: accounts[2]})
+      await token.increaseApproval(accounts[3], 10, {from: accounts[5]})
       .should.be.rejectedWith(EVMRevert);
     });
 
@@ -211,12 +212,23 @@ contract('Token', async function(accounts) {
 
     it('only a whitelisted address can transfer when token is paused', async() => {
       await token.unpause();
-      await token.addAddressToWhitelist(accounts[1]);
       await token.pause();
       await token.transfer(accounts[3], 2);
       const balance = await token.balanceOf(accounts[3]);
       assert(balance.toNumber() == 2);
-    });    
+    });
+
+    it('non-whitelisted address should not transfer when transfer lock is enabled', async() => {
+
+      await token.transfer(accounts[5], 2);
+      assert((await token.released()) == false);
+      await token.unpause();
+      await token.transfer(accounts[6], 2, {from: accounts[5]}).should.be.rejectedWith(EVMRevert);
+      await token.releaseTokenTransfer()
+      await token.transfer(accounts[6], 2, {from: accounts[5]});
+      const balance = await token.balanceOf(accounts[6]);
+      assert(balance.toNumber() == 2);
+    })
   });
 
   describe('Burn tokens', async () => {
@@ -286,7 +298,7 @@ contract('Token', async function(accounts) {
     it('it should revert when the balance if less than the sum', async () => {
       const balances = [];
       const destinations = [];
- 
+
       for(let i=1;i<4;i++) {
         destinations.push(accounts[i]);
         balances.push(i);
@@ -296,6 +308,6 @@ contract('Token', async function(accounts) {
       await token.transfer(accounts[6], currentBalance);
       await token.bulkTransfer(destinations, balances, { from: accounts[0] })
       .should.be.rejectedWith(EVMRevert);
-    });    
+    });
   });
 });
