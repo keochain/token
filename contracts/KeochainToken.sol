@@ -31,9 +31,9 @@ import "openzeppelin-solidity/contracts/token/ERC20/BurnableToken.sol";
 ///term requires patience and endurance. It’s easy to fall into traps when there are pumps or dips.
 ///With gamification users can both be educated about the upsides of staying out of the game of
 ///quick returns and provided some of the same emotional thrills that trading gives.
-contract MoonsToken is CustomPausable, StandardToken, BurnableToken, NoOwner {
-  string public constant name = "Moons";
-  string public constant symbol = "XMM";
+contract KeochainToken is CustomPausable, StandardToken, BurnableToken, NoOwner {
+  string public constant name = "Keochain";
+  string public constant symbol = "KEO";
   uint8 public constant decimals = 18;
   uint256 public constant INITIAL_SUPPLY = 1000000000 * (10 ** uint256(decimals));
 
@@ -41,10 +41,23 @@ contract MoonsToken is CustomPausable, StandardToken, BurnableToken, NoOwner {
   uint256 public totalRewarded = 0;
   uint256 public rewardBeganSince;
   address public gamificationWallet;
-
+  bool public released;
 
 
   event Mint(address indexed to, uint256 amount);
+
+  modifier canTransfer(address _sender) {
+    if(paused) {
+      if(!whitelist[_sender]) {
+        revert();
+      }
+    } else if(!released) {
+      if(!whitelist[_sender]) {
+        revert();
+      }
+    }
+    _;
+  }
 
   ///@param	_gamificationWallet The wallet address used for the gamification feature.
   ///@dev Set "rewardBeganSince" as a constant during deployment and remove this comment.
@@ -73,12 +86,18 @@ contract MoonsToken is CustomPausable, StandardToken, BurnableToken, NoOwner {
     emit Mint(_to, _amount);
   }
 
-  ///@return The total number of Moons (XMM) in existence. 
+  function releaseTokenTransfer() public onlyWhitelisted {
+    if(released) {
+      revert();
+    }
+    released = true;
+  }
+  ///@return The total number of Moons (XMM) in existence.
   function countTokensInExistence() public constant returns(uint256) {
     return INITIAL_SUPPLY.add(totalRewarded);
   }
 
-  ///@notice This feature is used by moonwhale gamification engine to provide daily rewards to the community. 
+  ///@notice This feature is used by moonwhale gamification engine to provide daily rewards to the community.
   ///Please refer to the whitepaper for more information.
   ///@return The total number of tokens that should have been minted by the gamification engine.
   function getMintingSupply() public constant returns(uint256) {
@@ -167,7 +186,7 @@ contract MoonsToken is CustomPausable, StandardToken, BurnableToken, NoOwner {
 
   ///@notice Allows admins and/or whitelist to perform bulk transfer operation.
   ///@param _destinations The destination wallet addresses to send funds to.
-  ///@param _amounts The respective amount of fund to send to the specified addresses. 
+  ///@param _amounts The respective amount of fund to send to the specified addresses.
   function bulkTransfer(address[] _destinations, uint256[] _amounts) public onlyWhitelisted {
     require(_destinations.length == _amounts.length);
 
@@ -175,7 +194,7 @@ contract MoonsToken is CustomPausable, StandardToken, BurnableToken, NoOwner {
     //to post this transaction.
     uint256 requiredBalance = sumOf(_amounts);
     require(balances[msg.sender] >= requiredBalance);
-    
+
     for (uint256 i = 0; i < _destinations.length; i++) {
      transfer(_destinations[i], _amounts[i]);
    }

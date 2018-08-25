@@ -14,14 +14,7 @@ contract CustomPausable is CustomWhitelist {
 
   bool public paused = false;
 
-  modifier canTransfer(address _sender) {
-    if(paused) {
-      if(!whitelist[_sender]) {
-        revert();
-      }
-    }    
-    _;    
-  }
+
 
   /**
    * @dev Modifier to make a function callable only when the contract is not paused.
