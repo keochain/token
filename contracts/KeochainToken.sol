@@ -1,5 +1,5 @@
 /*
-Copyright 2018 Moonwhale
+Copyright 2018 Keochain
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,13 +20,13 @@ import "./CustomPausable.sol";
 import "openzeppelin-solidity/contracts/ownership/NoOwner.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/BurnableToken.sol";
 
-///@title Moons Token
-///@author http://moonwhale.io
-///@notice Moons is the utility token of the Moonwhale ecosystem.
-///Moons will be distributed through a public ICO. A small portion of
-///Moons will be distributed for free for gamification purposes, rewarding a long-term investor
-///mindset and engagement in the Moonwhale App.
-///Moonwhale provides gamification of crypto investments to
+///@title Keochain Token
+///@author Binod Nirvan, Subramanian Venkatesan (http://keochain.io)
+///@notice Keochain (KEO) is the utility token of the Keochain ecosystem.
+///Keochain (KEO) will be distributed through a public ICO. A small portion of
+///Keochain (KEO) will be distributed for free for gamification purposes, rewarding a long-term investor
+///mindset and engagement in the Keochain App.
+///Keochain provides gamification of crypto investments to
 ///reward long term thinking and provide benchmarks along the way. Holding crypto assets long
 ///term requires patience and endurance. It’s easy to fall into traps when there are pumps or dips.
 ///With gamification users can both be educated about the upsides of staying out of the game of
@@ -92,12 +92,12 @@ contract KeochainToken is CustomPausable, StandardToken, BurnableToken, NoOwner 
     }
     released = true;
   }
-  ///@return The total number of Moons (XMM) in existence.
+  ///@return The total number of Keochain (KEO) in existence.
   function countTokensInExistence() public constant returns(uint256) {
     return INITIAL_SUPPLY.add(totalRewarded);
   }
 
-  ///@notice This feature is used by moonwhale gamification engine to provide daily rewards to the community.
+  ///@notice This feature is used by Keochain gamification engine to provide daily rewards to the community.
   ///Please refer to the whitepaper for more information.
   ///@return The total number of tokens that should have been minted by the gamification engine.
   function getMintingSupply() public constant returns(uint256) {
@@ -107,7 +107,7 @@ contract KeochainToken is CustomPausable, StandardToken, BurnableToken, NoOwner 
   }
 
   ///@notice Mints tokens for gamification engine.
-  ///Every day, 30000 new Moons are minted for gamification purposes.
+  ///Every day, 30000 new Keochain (KEO) are minted for gamification purposes.
   ///They are distributed to active users as rewards in the gamification
   ///engine. The minting of new tokens amounts to an inflation of around 1.095% per annum
   ///based on the initial supply of 1 billion tokens.

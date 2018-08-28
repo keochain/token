@@ -1,5 +1,5 @@
 /*
-Copyright 2018 Moonwhale
+Copyright 2018 Keochain
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -279,11 +279,27 @@ contract StandardToken is ERC20, BasicToken {
 
 }
 
+/*
+Copyright 2018 Keochain
 
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ */
+ 
+ 
 
 
 /*
-Copyright 2018 Moonwhale
+Copyright 2018 Keochain
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -430,14 +446,7 @@ contract CustomPausable is CustomWhitelist {
 
   bool public paused = false;
 
-  modifier canTransfer(address _sender) {
-    if(paused) {
-      if(!whitelist[_sender]) {
-        revert();
-      }
-    }    
-    _;    
-  }
+
 
   /**
    * @dev Modifier to make a function callable only when the contract is not paused.
@@ -671,20 +680,20 @@ contract BurnableToken is BasicToken {
 }
 
 
-///@title Moons Token
-///@author http://moonwhale.io
-///@notice Moons is the utility token of the Moonwhale ecosystem.
-///Moons will be distributed through a public ICO. A small portion of
-///Moons will be distributed for free for gamification purposes, rewarding a long-term investor
-///mindset and engagement in the Moonwhale App.
-///Moonwhale provides gamification of crypto investments to
+///@title Keochain Token
+///@author Binod Nirvan, Subramanian Venkatesan (http://keochain.io)
+///@notice Keochain (KEO) is the utility token of the Keochain ecosystem.
+///Keochain (KEO) will be distributed through a public ICO. A small portion of
+///Keochain (KEO) will be distributed for free for gamification purposes, rewarding a long-term investor
+///mindset and engagement in the Keochain App.
+///Keochain provides gamification of crypto investments to
 ///reward long term thinking and provide benchmarks along the way. Holding crypto assets long
 ///term requires patience and endurance. It’s easy to fall into traps when there are pumps or dips.
 ///With gamification users can both be educated about the upsides of staying out of the game of
 ///quick returns and provided some of the same emotional thrills that trading gives.
-contract MoonsToken is CustomPausable, StandardToken, BurnableToken, NoOwner {
-  string public constant name = "Moons";
-  string public constant symbol = "XMM";
+contract KeochainToken is CustomPausable, StandardToken, BurnableToken, NoOwner {
+  string public constant name = "Keochain";
+  string public constant symbol = "KEO";
   uint8 public constant decimals = 18;
   uint256 public constant INITIAL_SUPPLY = 1000000000 * (10 ** uint256(decimals));
 
@@ -692,10 +701,23 @@ contract MoonsToken is CustomPausable, StandardToken, BurnableToken, NoOwner {
   uint256 public totalRewarded = 0;
   uint256 public rewardBeganSince;
   address public gamificationWallet;
-
+  bool public released;
 
 
   event Mint(address indexed to, uint256 amount);
+
+  modifier canTransfer(address _sender) {
+    if(paused) {
+      if(!whitelist[_sender]) {
+        revert();
+      }
+    } else if(!released) {
+      if(!whitelist[_sender]) {
+        revert();
+      }
+    }
+    _;
+  }
 
   ///@param	_gamificationWallet The wallet address used for the gamification feature.
   ///@dev Set "rewardBeganSince" as a constant during deployment and remove this comment.
@@ -724,12 +746,18 @@ contract MoonsToken is CustomPausable, StandardToken, BurnableToken, NoOwner {
     emit Mint(_to, _amount);
   }
 
-  ///@return The total number of Moons (XMM) in existence. 
+  function releaseTokenTransfer() public onlyWhitelisted {
+    if(released) {
+      revert();
+    }
+    released = true;
+  }
+  ///@return The total number of Keochain (KEO) in existence.
   function countTokensInExistence() public constant returns(uint256) {
     return INITIAL_SUPPLY.add(totalRewarded);
   }
 
-  ///@notice This feature is used by moonwhale gamification engine to provide daily rewards to the community. 
+  ///@notice This feature is used by Keochain gamification engine to provide daily rewards to the community.
   ///Please refer to the whitepaper for more information.
   ///@return The total number of tokens that should have been minted by the gamification engine.
   function getMintingSupply() public constant returns(uint256) {
@@ -739,7 +767,7 @@ contract MoonsToken is CustomPausable, StandardToken, BurnableToken, NoOwner {
   }
 
   ///@notice Mints tokens for gamification engine.
-  ///Every day, 30000 new Moons are minted for gamification purposes.
+  ///Every day, 30000 new Keochain (KEO) are minted for gamification purposes.
   ///They are distributed to active users as rewards in the gamification
   ///engine. The minting of new tokens amounts to an inflation of around 1.095% per annum
   ///based on the initial supply of 1 billion tokens.
@@ -818,7 +846,7 @@ contract MoonsToken is CustomPausable, StandardToken, BurnableToken, NoOwner {
 
   ///@notice Allows admins and/or whitelist to perform bulk transfer operation.
   ///@param _destinations The destination wallet addresses to send funds to.
-  ///@param _amounts The respective amount of fund to send to the specified addresses. 
+  ///@param _amounts The respective amount of fund to send to the specified addresses.
   function bulkTransfer(address[] _destinations, uint256[] _amounts) public onlyWhitelisted {
     require(_destinations.length == _amounts.length);
 
@@ -826,7 +854,7 @@ contract MoonsToken is CustomPausable, StandardToken, BurnableToken, NoOwner {
     //to post this transaction.
     uint256 requiredBalance = sumOf(_amounts);
     require(balances[msg.sender] >= requiredBalance);
-    
+
     for (uint256 i = 0; i < _destinations.length; i++) {
      transfer(_destinations[i], _amounts[i]);
    }

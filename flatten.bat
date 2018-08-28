@@ -1,3 +1,3 @@
 @echo off
-SolidityFlattener "contracts/MoonsToken.sol" "contracts/MoonsTokenFlattened.sol" ".,../node_modules"
+SolidityFlattener "contracts/KeochainToken.sol" "contracts/KeochainTokenFlattened.sol" ".,../node_modules"
 pause
